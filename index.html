@@ -2,209 +2,69 @@
 <html lang="no">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GTO RFI Trainer Pro</title>
-    <style>
-        :root {
-            --poker-green: radial-gradient(circle, #2e7d32 0%, #1b5e20 100%);
-            --gold: #ffd700;
-        }
-        body { background-color: #121212; color: white; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; margin: 0; }
-        
-        /* Bord-layout */
-        #game-area { width: 100%; max-width: 800px; aspect-ratio: 16/9; position: relative; margin-top: 20px; }
-        #poker-table { 
-            width: 80%; height: 70%; background: var(--poker-green); 
-            border: 10px solid #4e342e; border-radius: 200px; 
-            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); 
-        }
-
-        /* Seter */
-        .seat {
-            position: absolute; width: 50px; height: 50px; background: #222;
-            border: 2px solid #555; border-radius: 50%; display: flex;
-            justify-content: center; align-items: center; font-size: 0.7rem; font-weight: bold;
-        }
-        .active-hero { border-color: var(--gold); box-shadow: 0 0 15px var(--gold); background: #444; }
-
-        /* Posisjons-plassering (Clockwise) */
-        #seat-utg { top: 20%; left: 15%; }
-        #seat-utg1 { top: 10%; left: 35%; }
-        #seat-utg2 { top: 10%; left: 65%; }
-        #seat-lj { top: 20%; left: 85%; }
-        #seat-hj { bottom: 20%; left: 85%; }
-        #seat-co { bottom: 8%; left: 65%; }
-        #seat-btn { bottom: 8%; left: 35%; }
-        #seat-sb { bottom: 20%; left: 15%; }
-
-        /* Kort */
-        #center-info { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; }
-        #hole-cards { display: flex; gap: 10px; justify-content: center; margin-top: 10px; }
-        .card { 
-            width: 60px; height: 85px; background: white; color: black; 
-            border-radius: 5px; font-size: 1.5rem; font-weight: bold;
-            display: flex; flex-direction: column; justify-content: center; align-items: center;
-        }
-        .red { color: #d32f2f; }
-
-        /* Kontroller */
-        #controls { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; padding: 20px; width: 90%; max-width: 500px; }
-        .btn { padding: 15px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; color: white; }
-        #btn-fold { background: #555; }
-        #btn-call { background: #1976d2; }
-        #btn-raise { background: #e64a19; }
-
-        /* Feedback */
-        #feedback-panel {
-            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            width: 80%; max-width: 400px; padding: 20px; border-radius: 15px;
-            text-align: center; z-index: 100; box-shadow: 0 0 30px rgba(0,0,0,0.8);
-        }
-        .correct { background: #2e7d32; border: 3px solid #a5d6a7; }
-        .wrong { background: #c62828; border: 3px solid #ef9a9a; }
-        .marginal { background: #f57c00; border: 3px solid #ffb74d; }
-        .hidden { display: none; }
-    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>GTO Preflop Trener - 40BB</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <div id="app-container">
+        <header>
+            <h1>Preflop Trener (40BB)</h1>
+            <button id="btn-show-range" class="secondary-btn">Vis Range for <span id="range-pos-label">UTG</span></button>
+        </header>
 
-    <div id="game-area">
-        <div id="poker-table"></div>
-        
-        <div id="seat-utg" class="seat">UTG</div>
-        <div id="seat-utg1" class="seat">UTG1</div>
-        <div id="seat-utg2" class="seat">UTG2</div>
-        <div id="seat-lj" class="seat">LJ</div>
-        <div id="seat-hj" class="seat">HJ</div>
-        <div id="seat-co" class="seat">CO</div>
-        <div id="seat-btn" class="seat">BTN</div>
-        <div id="seat-sb" class="seat">SB</div>
+        <main id="game-area">
+            <div id="poker-table"></div>
+            
+            <div id="seat-utg" class="seat">UTG</div>
+            <div id="seat-utg1" class="seat">UTG1</div>
+            <div id="seat-utg2" class="seat">UTG2</div>
+            <div id="seat-lj" class="seat">LJ</div>
+            <div id="seat-hj" class="seat">HJ</div>
+            <div id="seat-co" class="seat">CO</div>
+            <div id="seat-btn" class="seat">BTN</div>
+            <div id="seat-sb" class="seat">SB</div>
+            <div id="seat-bb" class="seat">BB</div>
 
-        <div id="center-info">
-            <div id="current-pos-display" style="font-weight: bold; color: var(--gold);">POSISJON</div>
-            <div id="hole-cards"></div>
+            <div id="center-info">
+                <div id="current-pos-display">UTG</div>
+                <div id="hole-cards">
+                    </div>
+            </div>
+        </main>
+
+        <section id="controls">
+            <button id="btn-fold" class="action-btn fold-btn">FOLD</button>
+            <button id="btn-call" class="action-btn call-btn">LIMP / CHECK</button>
+            <button id="btn-raise" class="action-btn raise-btn">RAISE</button>
+        </section>
+
+        <section id="feedback-section" class="hidden">
+            <div id="feedback-content">
+                <h2 id="feedback-title">Resultat</h2>
+                <p id="feedback-text">Forklaringen kommer her...</p>
+            </div>
+            <button id="btn-next" class="next-btn">NESTE HÅND</button>
+        </section>
+    </div>
+
+    <div id="range-modal" class="hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Åpningsrange: <span id="modal-pos-title">UTG</span> (40BB)</h2>
+                <button id="close-modal">&times;</button>
+            </div>
+            
+            <div id="matrix-container">
+                </div>
+            
+            <div class="legend">
+                <div class="legend-item"><span class="color-box raise-color"></span> Raise</div>
+                <div class="legend-item"><span class="color-box fold-color"></span> Fold / Limp</div>
+            </div>
         </div>
     </div>
 
-    <div id="feedback-panel" class="hidden">
-        <h2 id="feedback-title"></h2>
-        <p id="feedback-text"></p>
-        <button id="btn-next" class="btn" style="background: white; color: black; width: 100%;">NESTE HÅND</button>
-    </div>
-
-    <div id="controls">
-        <button id="btn-fold" class="btn">FOLD</button>
-        <button id="btn-call" class="btn">LIMP</button>
-        <button id="btn-raise" class="btn">RAISE</button>
-    </div>
-
-    <script>
-        const POSITIONS = ["UTG", "UTG1", "UTG2", "LJ", "HJ", "CO", "BTN", "SB"];
-        const VALUES = ['2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K', 'A'];
-        const SUITS = [
-            { name: 'spades', symbol: '♠', color: 'black' },
-            { name: 'hearts', symbol: '♥', color: 'red' },
-            { name: 'diamonds', symbol: '♦', color: 'red' },
-            { name: 'clubs', symbol: '♣', color: 'black' }
-        ];
-
-        const GTO_RANGES = {
-            "UTG":  { pairs: '77', suitedA: 'AT', offsuitA: 'AK', suitedK: 'KQ', extras: ['QJs', 'JTs'] },
-            "UTG1": { pairs: '66', suitedA: 'A9', offsuitA: 'AQ', suitedK: 'KJ', extras: ['QJs', 'JTs'] },
-            "UTG2": { pairs: '55', suitedA: 'A8', offsuitA: 'AJ', suitedK: 'KT', extras: ['QJs', 'JTs', 'T9s'] },
-            "LJ":   { pairs: '44', suitedA: 'A2', offsuitA: 'AJ', suitedK: 'K9', extras: ['Q9s', 'J9s', 'T9s', '98s', 'KQo'] },
-            "HJ":   { pairs: '22', suitedA: 'A2', offsuitA: 'AT', suitedK: 'K8', extras: ['Q9s', 'J9s', 'T9s', '98s', '87s', 'KQo', 'KJo'] },
-            "CO":   { pairs: '22', suitedA: 'A2', offsuitA: 'AT', suitedK: 'K5', extras: ['Q8s', 'J8s', 'T8s', '97s', '87s', '76s', 'KTo', 'QJo'] },
-            "BTN":  { pairs: '22', suitedA: 'A2', offsuitA: 'A2', suitedK: 'K2', extras: ['Q5s', 'J7s', 'T7s', '97s', '86s', '76s', '65s', '54s', 'K9o', 'Q9o', 'J9o', 'T9o'] },
-            "SB":   { pairs: '22', suitedA: 'A2', offsuitA: 'A2', suitedK: 'K2', extras: ['Q2s', 'J4s', 'T6s', '96s', '85s', '75s', '64s', '53s', '43s', 'K5o', 'Q8o', 'J8o', 'T8o', '98o'] }
-        };
-
-        let gameState = { currentPosIdx: 0, hand: [], handString: "", isSuited: false };
-
-        function getCardValue(v) { return VALUES.indexOf(v) + 2; }
-
-        function isHandInRfiRange(handStr, pos) {
-            if (handStr === "AKs" || handStr === "AA" || handStr === "KK" || handStr === "QQ") return true;
-            const range = GTO_RANGES[pos];
-            const val1 = handStr[0], val2 = handStr[1];
-            const type = handStr.endsWith('s') ? 'suited' : (handStr.endsWith('o') ? 'offsuit' : 'pair');
-            const v1 = getCardValue(val1), v2 = getCardValue(val2);
-            const high = Math.max(v1, v2), low = Math.min(v1, v2);
-
-            if (type === 'pair') return high >= getCardValue(range.pairs[0]);
-            if (high === 14) {
-                const minLow = (type === 'suited') ? getCardValue(range.suitedA[1]) : getCardValue(range.offsuitA[1]);
-                return low >= minLow;
-            }
-            if (high === 13 && type === 'suited') return low >= getCardValue(range.suitedK[1]);
-            return range.extras.some(extra => {
-                const eVal1 = getCardValue(extra[0]), eVal2 = getCardValue(extra[1]);
-                const eType = extra.endsWith('s') ? 'suited' : 'offsuit';
-                return type === eType && high === eVal1 && low >= eVal2;
-            });
-        }
-
-        function dealNewHand() {
-            gameState.currentPosIdx = Math.floor(Math.random() * POSITIONS.length);
-            let c1v = Math.floor(Math.random() * 13), c1s = Math.floor(Math.random() * 4);
-            let c2v = Math.floor(Math.random() * 13), c2s = Math.floor(Math.random() * 4);
-            while (c1v === c2v && c1s === c2s) { c2v = Math.floor(Math.random() * 13); c2s = Math.floor(Math.random() * 4); }
-            
-            gameState.hand = [{v: VALUES[c1v], s: SUITS[c1s]}, {v: VALUES[c2v], s: SUITS[c2s]}];
-            gameState.isSuited = c1s === c2s;
-            const v1 = getCardValue(gameState.hand[0].v), v2 = getCardValue(gameState.hand[1].v);
-            if (v1 === v2) gameState.handString = gameState.hand[0].v + gameState.hand[1].v;
-            else gameState.handString = (v1 > v2 ? gameState.hand[0].v + gameState.hand[1].v : gameState.hand[1].v + gameState.hand[0].v) + (gameState.isSuited ? "s" : "o");
-            
-            updateUI();
-        }
-
-        function updateUI() {
-            const pos = POSITIONS[gameState.currentPosIdx];
-            document.getElementById('current-pos-display').textContent = pos;
-            document.querySelectorAll('.seat').forEach(s => s.classList.remove('active-hero'));
-            const seat = document.getElementById("seat-" + pos.toLowerCase());
-            if (seat) seat.classList.add('active-hero');
-            const cardContainer = document.getElementById('hole-cards');
-            cardContainer.innerHTML = '';
-            gameState.hand.forEach(card => {
-                const div = document.createElement('div');
-                div.className = `card ${card.s.color}`;
-                div.innerHTML = `<span>${card.v}</span><span style="font-size:0.8em">${card.s.symbol}</span>`;
-                cardContainer.appendChild(div);
-            });
-            document.getElementById('feedback-panel').classList.add('hidden');
-        }
-
-        function checkAction(userAction) {
-            const pos = POSITIONS[gameState.currentPosIdx];
-            const shouldRaise = isHandInRfiRange(gameState.handString, pos);
-            let title = "", text = "", status = "";
-
-            if (userAction === 'LIMP') {
-                title = "FEIL!"; status = "wrong";
-                text = "Limping er ikke GTO. Du bør enten Raise eller Fold.";
-            } else if (userAction === 'RAISE') {
-                if (shouldRaise) { title = "RIKTIG!"; status = "correct"; text = `${gameState.handString} er en standard åpning fra ${pos}.`; }
-                else { title = "FEIL!"; status = "marginal"; text = `${gameState.handString} er for svakt fra ${pos}.`; }
-            } else {
-                if (!shouldRaise) { title = "RIKTIG!"; status = "correct"; text = `Bra kast! ${gameState.handString} kastes fra ${pos}.`; }
-                else { title = "FEIL!"; status = "wrong"; text = `Du må raise! ${gameState.handString} er for god til å kastes her.`; }
-            }
-            const panel = document.getElementById('feedback-panel');
-            panel.className = `feedback-panel ${status}`;
-            document.getElementById('feedback-title').textContent = title;
-            document.getElementById('feedback-text').textContent = text;
-            panel.classList.remove('hidden');
-        }
-
-        document.addEventListener('DOMContentLoaded', () => {
-            document.getElementById('btn-fold').onclick = () => checkAction('FOLD');
-            document.getElementById('btn-call').onclick = () => checkAction('LIMP');
-            document.getElementById('btn-raise').onclick = () => checkAction('RAISE');
-            document.getElementById('btn-next').onclick = dealNewHand;
-            dealNewHand();
-        });
-    </script>
+    <script src="script.js"></script>
 </body>
 </html>
