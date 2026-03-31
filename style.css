@@ -1,192 +1,142 @@
-/* Version: #2 */
-
+/* Version: #4 - Responsive & Large Table */
 :root {
-    --poker-green: #2e7d32;
-    --table-border: #5d4037;
-    --card-white: #ffffff;
-    --card-red: #d32f2f;
-    --card-black: #212121;
+    --poker-green: radial-gradient(circle, #357a38 0%, #1b5e20 100%);
+    --table-border: #4e342e;
     --action-gold: #ffc107;
 }
 
-* {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-}
-
 body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background-color: #1a1a1a;
-    color: white;
-    display: flex;
-    justify-content: center;
-    padding: 20px;
+    background-color: #121212;
+    margin: 0;
+    font-family: sans-serif;
+    overflow-x: hidden;
 }
 
 #app-container {
-    max-width: 900px;
-    width: 100%;
-    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 10px;
+    min-height: 100vh;
 }
 
-header h1 {
-    margin-bottom: 10px;
-    color: var(--action-gold);
-}
-
-header p {
-    margin-bottom: 20px;
-    font-size: 0.9rem;
-    opacity: 0.8;
-}
-
-/* === POKERBORDET === */
+/* === DET STORE BORDET === */
 #poker-table-area {
+    width: 100%;
+    max-width: 1000px;
+    aspect-ratio: 16 / 9;
     position: relative;
-    height: 400px;
-    margin-bottom: 30px;
+    margin: 20px 0;
     display: flex;
     justify-content: center;
     align-items: center;
 }
 
 #poker-table {
-    width: 80%;
-    height: 250px;
-    background-color: var(--poker-green);
-    border: 15px solid var(--table-border);
-    border-radius: 125px;
+    width: 90%;
+    height: 80%;
+    background: var(--poker-green);
+    border: 12px solid var(--table-border);
+    border-radius: 150px;
     position: relative;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.5), inset 0 0 50px rgba(0,0,0,0.3);
+    box-shadow: 0 0 50px rgba(0,0,0,0.8), inset 0 0 30px rgba(0,0,0,0.5);
 }
 
-/* Seteplassering (9 plasser) */
+/* Dynamisk seteplassering */
 .seat {
     position: absolute;
-    width: 60px;
-    height: 60px;
-    background: #333;
-    border: 2px solid #777;
+    width: clamp(45px, 10vw, 70px);
+    height: clamp(45px, 10vw, 70px);
+    background: #212121;
+    border: 2px solid #444;
     border-radius: 50%;
     display: flex;
     justify-content: center;
     align-items: center;
-    font-size: 0.75rem;
+    font-size: clamp(0.6rem, 2vw, 0.9rem);
     font-weight: bold;
-    z-index: 10;
+    color: white;
+    transition: all 0.3s;
+    z-index: 5;
 }
 
-/* Plassering av seter i en ellipse rundt bordet */
-#seat-utg  { top: 10%;  left: 15%; }
-#seat-utg1 { top: -15%; left: 45%; }
-#seat-utg2 { top: 10%;  right: 15%; }
-#seat-lj   { top: 40%;  right: -5%; }
-#seat-hj   { bottom: 5%; right: 15%; }
-#seat-co   { bottom: -15%; left: 65%; }
-#seat-btn  { bottom: -15%; left: 25%; }
-#seat-sb   { bottom: 5%; left: 15%; }
-#seat-bb   { top: 40%;  left: -5%; }
+/* Posisjoner (prosentbasert for responsivitet) */
+#seat-utg  { top: 15%; left: 10%; }
+#seat-utg1 { top: 0%;  left: 45%; transform: translateX(-50%); }
+#seat-utg2 { top: 15%; right: 10%; }
+#seat-lj   { top: 45%; right: -2%; transform: translateY(-50%); }
+#seat-hj   { bottom: 10%; right: 10%; }
+#seat-co   { bottom: -8%; left: 65%; }
+#seat-btn  { bottom: -8%; left: 35%; }
+#seat-sb   { bottom: 10%; left: 10%; }
+#seat-bb   { top: 45%; left: -2%; transform: translateY(-50%); }
 
-.seat.active-hero {
-    border-color: var(--action-gold);
-    box-shadow: 0 0 15px var(--action-gold);
-    transform: scale(1.1);
+.active-hero {
+    border-color: var(--action-gold) !important;
+    box-shadow: 0 0 20px var(--action-gold);
+    transform: scale(1.15);
+    background: #333 !important;
 }
 
-.pos-label {
-    color: #fff;
-}
-
-/* === KORTENE === */
+/* Senterområdet */
 #table-center {
     position: absolute;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
+    text-align: center;
 }
 
 #hole-cards {
     display: flex;
-    gap: 10px;
+    gap: 8px;
 }
 
 .card {
-    width: 60px;
-    height: 85px;
-    background: var(--card-white);
-    border-radius: 5px;
+    width: clamp(50px, 12vw, 80px);
+    aspect-ratio: 2.5 / 3.5;
+    background: white;
+    border-radius: 6px;
     color: black;
     display: flex;
+    flex-direction: column;
     justify-content: center;
     align-items: center;
-    font-size: 1.5rem;
+    font-size: clamp(1.2rem, 4vw, 2rem);
     font-weight: bold;
-    box-shadow: 2px 2px 5px rgba(0,0,0,0.3);
+    box-shadow: 3px 3px 10px rgba(0,0,0,0.5);
 }
 
-.card.red { color: var(--card-red); }
-.card.black { color: var(--card-black); }
-
-/* === KONTROLLPANEL === */
+/* === MOBIL-KONTROLLER === */
 #control-panel {
-    background: #2a2a2a;
-    padding: 20px;
-    border-radius: 10px;
-    border: 1px solid #444;
-}
-
-#scenario-info {
-    margin-bottom: 20px;
-    border-bottom: 1px solid #444;
-    padding-bottom: 10px;
+    width: 100%;
+    max-width: 600px;
+    background: #1e1e1e;
+    padding: 15px;
+    border-radius: 15px 15px 0 0;
+    margin-top: auto;
 }
 
 #action-buttons {
-    display: flex;
-    justify-content: center;
-    gap: 15px;
-    margin-bottom: 20px;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
 }
 
 .action-btn {
-    padding: 12px 30px;
-    font-size: 1.1rem;
-    font-weight: bold;
+    padding: 15px 5px;
+    font-size: 1rem;
+    border-radius: 8px;
     border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    transition: transform 0.1s, background 0.2s;
-}
-
-.action-btn:active { transform: scale(0.95); }
-
-#btn-fold { background: #555; color: white; }
-#btn-call { background: #0288d1; color: white; }
-#btn-raise { background: #d84315; color: white; }
-
-/* === TILBAKEMELDING === */
-#feedback-panel {
-    margin-top: 15px;
-    padding: 15px;
-    border-radius: 5px;
-    background: #383838;
-}
-
-#feedback-panel.correct { border-left: 10px solid #4caf50; }
-#feedback-panel.wrong { border-left: 10px solid #f44336; }
-#feedback-panel.marginal { border-left: 10px solid var(--action-gold); }
-
-#btn-next-hand {
-    margin-top: 15px;
-    padding: 10px 20px;
-    background: var(--action-gold);
-    border: none;
-    border-radius: 5px;
     font-weight: bold;
     cursor: pointer;
 }
 
-.hidden { display: none; }
+#btn-fold { background: #424242; color: white; }
+#btn-raise { background: #e64a19; color: white; }
+#btn-call { background: #1976d2; color: white; }
 
-/* Version: #2 */
+@media (max-width: 600px) {
+    #poker-table { height: 60%; border-width: 8px; }
+    #scenario-info h2 { font-size: 1rem; }
+}
