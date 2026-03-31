@@ -1,295 +1,288 @@
-/* Version: #8 */
+/* Version: #9 */
 
-:root {
-    --poker-green: radial-gradient(circle, #2e7d32 0%, #1b5e20 100%);
-    --table-border: #3e2723;
-    --gold: #ffc107;
-    --bg-dark: #121212;
-    --panel-bg: #1e1e1e;
-    --raise-color: #d32f2f;
-    --fold-color: #333333;
-    --call-color: #1976d2;
+// === 1. KONFIGURASJON OG DATA ===
+
+const POSITIONS = ["UTG", "UTG1", "UTG2", "LJ", "HJ", "CO", "BTN", "SB", "BB"];
+const VALUES = ['A', 'K', 'Q', 'J', 'T', '9', '8', '7', '6', '5', '4', '3', '2'];
+const SUITS = [
+    { name: 'spades', symbol: '♠', color: 'black' },
+    { name: 'hearts', symbol: '♥', color: 'red' },
+    { name: 'diamonds', symbol: '♦', color: 'red' },
+    { name: 'clubs', symbol: '♣', color: 'black' }
+];
+
+// GTO RFI Ranges (40BB) - Bruker standard pluss-notasjon
+const RANGES = {
+    "UTG":  ["77+", "ATs+", "KQs", "QJs", "JTs", "AQo+"],
+    "UTG1": ["66+", "A9s+", "KJs+", "QJs", "JTs", "AQo+"],
+    "UTG2": ["55+", "A8s+", "KTs+", "QTs+", "JTs", "T9s", "AJo+"],
+    "LJ":   ["44+", "A2s+", "K9s+", "Q9s+", "J9s+", "T9s", "98s", "AJo+", "KQo"],
+    "HJ":   ["22+", "A2s+", "K8s+", "Q9s+", "J9s+", "T9s", "98s", "87s", "ATo+", "KJo+", "KQo"],
+    "CO":   ["22+", "A2s+", "K5s+", "Q8s+", "J8s+", "T8s+", "97s+", "87s", "76s", "ATo+", "KTo+", "QJo"],
+    "BTN":  ["22+", "A2s+", "K2s+", "Q2s+", "J5s+", "T6s+", "96s+", "85s+", "75s+", "64s+", "54s+", "A2o+", "K9o+", "Q9o+", "J9o+", "T9o+"],
+    
+    // SB har en delt strategi (Raise med sterk range, Limp med bredere range)
+    "SB_RAISE": ["55+", "A8s+", "KJs+", "QJs", "AJo+", "KQo"],
+    "SB_LIMP":  ["22+", "A2s+", "K2s+", "Q2s+", "J2s+", "T2s+", "95s+", "84s+", "74s+", "63s+", "53s+", "43s+", "A2o+", "K5o+", "Q8o+", "J8o+", "T8o+", "98o+"],
+    
+    // BB får en "Walk" i en uåpnet pott. Alt er en sjekk/seier.
+    "BB": ["ANY"] 
+};
+
+// === 2. APP-TILSTAND ===
+let state = {
+    currentPosIdx: 0,
+    hand: [],
+    handStr: "",
+    isSuited: false,
+    expandedRanges: {} // Cacher de kalkulerte rangene
+};
+
+// === 3. MOTOR FOR RANGE-TOLKNING ===
+
+function log(msg) { console.log(`[POKER-LOG] ${msg}`); }
+
+// Utvider "A9s+" til ["AKs", "AQs", "AJs", "ATs", "A9s"]
+function expandRangeConfig(rangeArr) {
+    if (rangeArr.includes("ANY")) return "ANY";
+    let hands = new Set();
+    
+    rangeArr.forEach(item => {
+        if (item.endsWith('+')) {
+            let base = item.slice(0, -1);
+            if (base.length === 2) { // Par, f.eks. "77+"
+                let valIdx = VALUES.indexOf(base[0]);
+                for (let i = 0; i <= valIdx; i++) hands.add(VALUES[i] + VALUES[i]);
+            } else { // Suited/Offsuit, f.eks. "ATs+"
+                let c1 = base[0], c2 = base[1], type = base[2];
+                let idx1 = VALUES.indexOf(c1);
+                let idx2 = VALUES.indexOf(c2);
+                for (let i = idx1 + 1; i <= idx2; i++) {
+                    hands.add(c1 + VALUES[i] + type);
+                }
+            }
+        } else {
+            hands.add(item); // Enkelt-hender som "KQs"
+        }
+    });
+
+    // Premium-garanti
+    hands.add("AA"); hands.add("KK"); hands.add("QQ"); hands.add("AKs");
+    return hands;
 }
 
-* {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
+// Pre-kalkuler alle ranges ved oppstart for rask oppslag
+function initializeRanges() {
+    log("Kalkulerer og utvider GTO ranges...");
+    for (let pos in RANGES) {
+        state.expandedRanges[pos] = expandRangeConfig(RANGES[pos]);
+    }
 }
 
-body {
-    background-color: var(--bg-dark);
-    color: white;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    display: flex;
-    justify-content: center;
-    min-height: 100vh;
+// === 4. SPILLELOGIKK ===
+
+function dealNewHand() {
+    log("Deler ut ny hånd...");
+    
+    // Roter posisjon tilfeldig
+    state.currentPosIdx = Math.floor(Math.random() * POSITIONS.length);
+    const pos = POSITIONS[state.currentPosIdx];
+
+    // Generer unike kort (1-13 konverteres til index 0-12)
+    let c1v = Math.floor(Math.random() * 13);
+    let c1s = Math.floor(Math.random() * 4);
+    let c2v = Math.floor(Math.random() * 13);
+    let c2s = Math.floor(Math.random() * 4);
+
+    while (c1v === c2v && c1s === c2s) {
+        c2v = Math.floor(Math.random() * 13);
+        c2s = Math.floor(Math.random() * 4);
+    }
+
+    state.hand = [
+        { v: VALUES[c1v], s: SUITS[c1s], idx: c1v },
+        { v: VALUES[c2v], s: SUITS[c2s], idx: c2v }
+    ];
+    state.isSuited = c1s === c2s;
+
+    // Sorter slik at høyeste kort (lavest index i VALUES) kommer først
+    state.hand.sort((a, b) => a.idx - b.idx);
+    
+    const hHigh = state.hand[0].v;
+    const hLow = state.hand[1].v;
+
+    if (hHigh === hLow) {
+        state.handStr = hHigh + hLow;
+    } else {
+        state.handStr = hHigh + hLow + (state.isSuited ? "s" : "o");
+    }
+
+    updateUI(pos);
+    log(`Ny posisjon: ${pos}, Hånd: ${state.handStr}`);
 }
 
-#app-container {
-    width: 100%;
-    max-width: 900px;
-    display: flex;
-    flex-direction: column;
-    padding: 15px;
+function checkAction(userAction) {
+    const pos = POSITIONS[state.currentPosIdx];
+    let title = "", text = "", statusClass = "";
+
+    // SPESIALHÅNDTERING: Big Blind
+    if (pos === "BB") {
+        if (userAction === "LIMP") {
+            title = "RIKTIG!"; statusClass = "correct";
+            text = "Godt observert. Siden alle foran deg har kastet, får du en 'Walk' (du vinner potten gratis). Her 'sjekker' du bare for å ta sjetongene.";
+        } else {
+            title = "UNØDVENDIG"; statusClass = "wrong";
+            text = "Husk situasjonen: Alle frem til Big Blind har kastet. Handlingen er over, og du vinner potten (walk). Du trenger verken folde eller raise.";
+        }
+    } 
+    // SPESIALHÅNDTERING: Small Blind
+    else if (pos === "SB") {
+        const isRaise = state.expandedRanges["SB_RAISE"].has(state.handStr);
+        const isLimp = state.expandedRanges["SB_LIMP"].has(state.handStr);
+
+        if (userAction === "RAISE") {
+            if (isRaise) { title = "RIKTIG!"; statusClass = "correct"; text = `${state.handStr} er sterk nok til å open-raise fra SB for å presse BB.`; }
+            else { title = "FEIL!"; statusClass = "wrong"; text = `${state.handStr} er for svakt til å raise. Vurder limp (complete) eller fold i stedet.`; }
+        } else if (userAction === "LIMP") {
+            if (isRaise) { title = "MARGINALT"; statusClass = "marginal"; text = `Du kan limpe, men med ${state.handStr} er det bedre å raise for verdi.`; }
+            else if (isLimp) { title = "RIKTIG!"; statusClass = "correct"; text = `Å limpe (complete) med ${state.handStr} er standard GTO-spill fra SB mot BB.`; }
+            else { title = "FEIL!"; statusClass = "wrong"; text = `${state.handStr} er for svakt selv til å limpe. Fold!`; }
+        } else { // FOLD
+            if (!isLimp && !isRaise) { title = "RIKTIG!"; statusClass = "correct"; text = `Bra kast! ${state.handStr} er søppel.`; }
+            else { title = "FOR TIGHT"; statusClass = "wrong"; text = `SB gir deg gode odds for å i det minste limpe (complete) med ${state.handStr}.`; }
+        }
+    } 
+    // STANDARD: UTG til BTN
+    else {
+        const isRaise = state.expandedRanges[pos].has(state.handStr);
+        
+        if (userAction === "LIMP") {
+            title = "FEIL!"; statusClass = "wrong"; text = "Limping er et amatørtrekk i uåpnede potter utenfor blindene. Alltid Raise eller Fold!";
+        } else if (userAction === "RAISE") {
+            if (isRaise) { title = "RIKTIG!"; statusClass = "correct"; text = `${state.handStr} er en profitabel åpning fra ${pos}.`; }
+            else { title = "FOR AGGRESSIVT"; statusClass = "marginal"; text = `${state.handStr} kastes normalt fra ${pos}.`; }
+        } else { // FOLD
+            if (!isRaise) { title = "RIKTIG!"; statusClass = "correct"; text = `Disiplinert. ${state.handStr} hører hjemme i mucken herfra.`; }
+            else { title = "FOR TIGHT"; statusClass = "wrong"; text = `GTO sier Raise! ${state.handStr} er altfor sterk til å kastes fra ${pos}.`; }
+        }
+    }
+
+    displayFeedback(title, text, statusClass);
 }
 
-/* === HEADER === */
-header {
-    text-align: center;
-    margin-bottom: 20px;
+// === 5. UI OPPTEGNING ===
+
+function updateUI(pos) {
+    document.getElementById('current-pos-display').textContent = pos;
+    document.getElementById('range-pos-label').textContent = pos;
+    
+    // Oppdater visuelle seter
+    document.querySelectorAll('.seat').forEach(s => s.classList.remove('active-hero'));
+    const seatId = "seat-" + pos.toLowerCase();
+    const activeSeat = document.getElementById(seatId);
+    if(activeSeat) activeSeat.classList.add('active-hero');
+
+    // Tegn kort
+    const cc = document.getElementById('hole-cards');
+    cc.innerHTML = '';
+    state.hand.forEach(c => {
+        const div = document.createElement('div');
+        div.className = `card ${c.s.color}`;
+        div.innerHTML = `<span>${c.v}</span><span style="font-size: 0.6em; margin-top: 5px;">${c.s.symbol}</span>`;
+        cc.appendChild(div);
+    });
+
+    // Skjul feedback panel og reaktiver knapper
+    document.getElementById('feedback-section').classList.add('hidden');
+    document.querySelectorAll('.action-btn').forEach(btn => btn.disabled = false);
 }
 
-header h1 {
-    font-size: 1.5rem;
-    color: var(--gold);
-    margin-bottom: 10px;
+function displayFeedback(title, text, statusClass) {
+    const panel = document.getElementById('feedback-section');
+    panel.className = statusClass; // Resetter hidden og legger til farge
+    
+    document.getElementById('feedback-title').textContent = title;
+    document.getElementById('feedback-text').textContent = text;
+    
+    // Deaktiver handlingsknapper mens vi ser på svaret
+    document.querySelectorAll('.action-btn').forEach(btn => btn.disabled = true);
+    
+    // Scroll ned på mobil
+    panel.scrollIntoView({ behavior: 'smooth', block: 'end' });
 }
 
-.secondary-btn {
-    background: #444;
-    color: white;
-    border: 1px solid #666;
-    padding: 8px 16px;
-    border-radius: 5px;
-    cursor: pointer;
-    font-size: 0.9rem;
-    transition: background 0.2s;
+// === 6. RANGE MATRISE (MODAL) ===
+
+function buildMatrix() {
+    log("Bygger 13x13 Range Matrise GUI...");
+    const container = document.getElementById('matrix-container');
+    container.innerHTML = '';
+
+    const pos = POSITIONS[state.currentPosIdx];
+    document.getElementById('modal-pos-title').textContent = pos;
+
+    let raiseRange = pos === "SB" ? state.expandedRanges["SB_RAISE"] : (pos === "BB" ? "ANY" : state.expandedRanges[pos]);
+    let limpRange = pos === "SB" ? state.expandedRanges["SB_LIMP"] : new Set();
+
+    for (let r = 0; r < 13; r++) {
+        for (let c = 0; c < 13; c++) {
+            const cell = document.createElement('div');
+            let handName = "";
+
+            if (r === c) {
+                handName = VALUES[r] + VALUES[c]; // Par
+            } else if (c > r) {
+                handName = VALUES[r] + VALUES[c] + "s"; // Suited
+            } else {
+                handName = VALUES[c] + VALUES[r] + "o"; // Offsuit
+            }
+
+            cell.textContent = handName;
+            cell.className = 'matrix-cell';
+
+            if (pos === "BB") {
+                cell.classList.add('limp'); // Alt er Walk
+            } else if (raiseRange.has(handName)) {
+                cell.classList.add('raise');
+            } else if (limpRange.has(handName)) {
+                cell.classList.add('limp');
+            }
+
+            container.appendChild(cell);
+        }
+    }
 }
 
-.secondary-btn:hover { background: #555; }
-
-/* === POKERBORDET === */
-#game-area {
-    position: relative;
-    width: 100%;
-    aspect-ratio: 16 / 10;
-    margin-bottom: 20px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
+function openModal() {
+    buildMatrix();
+    document.getElementById('range-modal').classList.remove('hidden');
 }
 
-#poker-table {
-    width: 85%;
-    height: 75%;
-    background: var(--poker-green);
-    border: 12px solid var(--table-border);
-    border-radius: 200px;
-    position: absolute;
-    box-shadow: 0 15px 40px rgba(0,0,0,0.8), inset 0 0 40px rgba(0,0,0,0.5);
+function closeModal() {
+    document.getElementById('range-modal').classList.add('hidden');
 }
 
-/* Seteplassering (9 plasser - Clockwise) */
-.seat {
-    position: absolute;
-    width: clamp(45px, 10vw, 60px);
-    height: clamp(45px, 10vw, 60px);
-    background: #212121;
-    border: 2px solid #555;
-    border-radius: 50%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    font-size: clamp(0.6rem, 2vw, 0.8rem);
-    font-weight: bold;
-    z-index: 10;
-    transition: all 0.3s ease;
-}
+// === 7. INITIALISERING ===
 
-#seat-bb   { top: 25%; left: 5%; }
-#seat-utg  { top: 8%; left: 25%; }
-#seat-utg1 { top: 3%; left: 50%; transform: translateX(-50%); }
-#seat-utg2 { top: 8%; right: 25%; }
-#seat-lj   { top: 35%; right: 3%; }
-#seat-hj   { bottom: 20%; right: 15%; }
-#seat-co   { bottom: 5%; left: 50%; transform: translateX(-50%); }
-#seat-btn  { bottom: 20%; left: 15%; }
-#seat-sb   { top: 60%; left: 3%; }
+document.addEventListener('DOMContentLoaded', () => {
+    initializeRanges();
+    
+    // Event Listeners - Handlinger
+    document.getElementById('btn-fold').addEventListener('click', () => checkAction('FOLD'));
+    document.getElementById('btn-call').addEventListener('click', () => checkAction('LIMP'));
+    document.getElementById('btn-raise').addEventListener('click', () => checkAction('RAISE'));
+    document.getElementById('btn-next').addEventListener('click', dealNewHand);
+    
+    // Event Listeners - Modal
+    document.getElementById('btn-show-range').addEventListener('click', openModal);
+    document.getElementById('close-modal').addEventListener('click', closeModal);
+    
+    // Lukk modal hvis man trykker utenfor vinduet
+    document.getElementById('range-modal').addEventListener('click', (e) => {
+        if (e.target.id === 'range-modal') closeModal();
+    });
 
-.seat.active-hero {
-    border-color: var(--gold);
-    box-shadow: 0 0 20px var(--gold);
-    background: #333;
-    transform: scale(1.15);
-}
+    dealNewHand();
+});
 
-/* Kort og Senter-info */
-#center-info {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    text-align: center;
-    z-index: 5;
-}
-
-#current-pos-display {
-    color: var(--gold);
-    font-weight: bold;
-    font-size: 1.2rem;
-    margin-bottom: 10px;
-    letter-spacing: 1px;
-}
-
-#hole-cards {
-    display: flex;
-    gap: 8px;
-    justify-content: center;
-}
-
-.card {
-    width: clamp(55px, 12vw, 75px);
-    aspect-ratio: 2.5 / 3.5;
-    background: white;
-    border-radius: 6px;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    font-size: clamp(1.2rem, 4vw, 1.8rem);
-    font-weight: bold;
-    box-shadow: 2px 5px 10px rgba(0,0,0,0.6);
-}
-
-.card.red { color: var(--raise-color); }
-.card.black { color: #111; }
-
-/* === KONTROLLER & INTEGRERT FEEDBACK === */
-#controls {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    gap: 10px;
-    margin-bottom: 15px;
-}
-
-.action-btn {
-    padding: 15px 5px;
-    border: none;
-    border-radius: 8px;
-    font-weight: bold;
-    font-size: clamp(0.8rem, 3vw, 1rem);
-    cursor: pointer;
-    color: white;
-    transition: transform 0.1s, opacity 0.2s;
-}
-
-.action-btn:active { transform: scale(0.95); }
-.action-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-
-.fold-btn { background: #555; }
-.call-btn { background: var(--call-color); }
-.raise-btn { background: #e64a19; }
-
-#feedback-section {
-    background: var(--panel-bg);
-    border-radius: 10px;
-    padding: 20px;
-    text-align: center;
-    border-top: 4px solid transparent;
-    animation: slideDown 0.3s ease-out;
-}
-
-@keyframes slideDown {
-    from { opacity: 0; transform: translateY(-10px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-#feedback-section.correct { border-top-color: #4caf50; }
-#feedback-section.wrong { border-top-color: #f44336; }
-#feedback-section.marginal { border-top-color: #ff9800; }
-
-#feedback-title { margin-bottom: 10px; font-size: 1.2rem; }
-#feedback-text { margin-bottom: 20px; line-height: 1.4; color: #ddd; }
-
-.next-btn {
-    width: 100%;
-    padding: 15px;
-    background: white;
-    color: black;
-    font-weight: bold;
-    font-size: 1rem;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-}
-
-/* === RANGE MATRISE MODAL (13x13 Grid) === */
-#range-modal {
-    position: fixed;
-    top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(0,0,0,0.85);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 1000;
-    padding: 15px;
-}
-
-.modal-content {
-    background: var(--panel-bg);
-    width: 100%;
-    max-width: 550px;
-    border-radius: 10px;
-    padding: 20px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.9);
-}
-
-.modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
-    border-bottom: 1px solid #444;
-    padding-bottom: 10px;
-}
-
-#close-modal {
-    background: none;
-    border: none;
-    color: white;
-    font-size: 2rem;
-    cursor: pointer;
-    line-height: 1;
-}
-
-/* Selve rutenettet */
-#matrix-container {
-    display: grid;
-    grid-template-columns: repeat(13, 1fr);
-    gap: 2px;
-    width: 100%;
-    aspect-ratio: 1;
-    margin-bottom: 15px;
-}
-
-.matrix-cell {
-    background: var(--fold-color);
-    color: #888;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    font-size: clamp(0.5rem, 1.5vw, 0.75rem);
-    font-weight: bold;
-    border-radius: 2px;
-    user-select: none;
-}
-
-.matrix-cell.raise { background: var(--raise-color); color: white; }
-.matrix-cell.limp { background: var(--call-color); color: white; } /* For SB/BB logikk senere */
-
-.legend {
-    display: flex;
-    justify-content: center;
-    gap: 20px;
-    font-size: 0.9rem;
-}
-
-.legend-item { display: flex; align-items: center; gap: 5px; }
-.color-box { width: 15px; height: 15px; border-radius: 3px; }
-.raise-color { background: var(--raise-color); }
-.fold-color { background: var(--fold-color); border: 1px solid #555; }
-
-.hidden { display: none !important; }
-
-/* Version: #8 */
+/* Version: #9 */
