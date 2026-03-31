@@ -1,4 +1,4 @@
-/* Version: #8 */
+/* Version: #11 */
 
 :root {
     --poker-green: radial-gradient(circle, #2e7d32 0%, #1b5e20 100%);
@@ -31,19 +31,72 @@ body {
     max-width: 900px;
     display: flex;
     flex-direction: column;
-    padding: 15px;
+    padding: 10px;
 }
 
-/* === HEADER === */
+/* === HEADER, STATS OG INNSTILLINGER === */
 header {
     text-align: center;
-    margin-bottom: 20px;
+    margin-bottom: 15px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
 }
 
 header h1 {
     font-size: 1.5rem;
+    color: white;
+    margin-bottom: 5px;
+}
+
+#game-stats {
+    display: flex;
+    gap: 20px;
+    font-size: 1.2rem;
+    font-weight: bold;
     color: var(--gold);
-    margin-bottom: 10px;
+    background: rgba(255, 193, 7, 0.1);
+    padding: 8px 20px;
+    border-radius: 20px;
+    border: 1px solid rgba(255, 193, 7, 0.3);
+}
+
+#settings-panel {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    justify-content: center;
+    align-items: center;
+    background: var(--panel-bg);
+    padding: 10px 20px;
+    border-radius: 8px;
+    border: 1px solid #444;
+    width: 100%;
+    max-width: 600px;
+}
+
+.setting-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.9rem;
+}
+
+#mode-selector {
+    background: #333;
+    color: white;
+    border: 1px solid #555;
+    padding: 5px 10px;
+    border-radius: 5px;
+    outline: none;
+}
+
+.toggle-label {
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 5px;
 }
 
 .secondary-btn {
@@ -55,6 +108,7 @@ header h1 {
     cursor: pointer;
     font-size: 0.9rem;
     transition: background 0.2s;
+    margin-top: 5px;
 }
 
 .secondary-btn:hover { background: #555; }
@@ -64,7 +118,7 @@ header h1 {
     position: relative;
     width: 100%;
     aspect-ratio: 16 / 10;
-    margin-bottom: 20px;
+    margin-bottom: 15px;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -114,6 +168,12 @@ header h1 {
     transform: scale(1.15);
 }
 
+.seat.active-villain {
+    border-color: #d32f2f;
+    box-shadow: 0 0 20px #d32f2f;
+    background: #4a0000;
+}
+
 /* Kort og Senter-info */
 #center-info {
     position: absolute;
@@ -122,13 +182,25 @@ header h1 {
     transform: translate(-50%, -50%);
     text-align: center;
     z-index: 5;
+    width: 100%;
+}
+
+#scenario-display {
+    display: inline-block;
+    background: rgba(0, 0, 0, 0.6);
+    padding: 5px 15px;
+    border-radius: 15px;
+    font-size: 0.85rem;
+    color: #ddd;
+    margin-bottom: 8px;
+    border: 1px solid #555;
 }
 
 #current-pos-display {
     color: var(--gold);
     font-weight: bold;
     font-size: 1.2rem;
-    margin-bottom: 10px;
+    margin-bottom: 8px;
     letter-spacing: 1px;
 }
 
@@ -214,7 +286,7 @@ header h1 {
     cursor: pointer;
 }
 
-/* === RANGE MATRISE MODAL (13x13 Grid) === */
+/* === RANGE MATRISE MODAL === */
 #range-modal {
     position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;
@@ -239,7 +311,7 @@ header h1 {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 20px;
+    margin-bottom: 15px;
     border-bottom: 1px solid #444;
     padding-bottom: 10px;
 }
@@ -253,7 +325,6 @@ header h1 {
     line-height: 1;
 }
 
-/* Selve rutenettet */
 #matrix-container {
     display: grid;
     grid-template-columns: repeat(13, 1fr);
@@ -273,23 +344,43 @@ header h1 {
     font-weight: bold;
     border-radius: 2px;
     user-select: none;
+    position: relative;
 }
 
 .matrix-cell.raise { background: var(--raise-color); color: white; }
-.matrix-cell.limp { background: var(--call-color); color: white; } /* For SB/BB logikk senere */
+.matrix-cell.call { background: var(--call-color); color: white; }
+.matrix-cell.limp { background: var(--call-color); color: white; }
+
+/* Highlight-animasjon for spesifikk hånd */
+.matrix-cell.highlight-hand {
+    border: 3px solid var(--gold);
+    color: white;
+    z-index: 2;
+    transform: scale(1.15);
+    box-shadow: 0 0 15px var(--gold);
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.7); }
+    70% { box-shadow: 0 0 0 10px rgba(255, 193, 7, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0); }
+}
 
 .legend {
     display: flex;
     justify-content: center;
-    gap: 20px;
-    font-size: 0.9rem;
+    flex-wrap: wrap;
+    gap: 15px;
+    font-size: 0.85rem;
 }
 
 .legend-item { display: flex; align-items: center; gap: 5px; }
 .color-box { width: 15px; height: 15px; border-radius: 3px; }
 .raise-color { background: var(--raise-color); }
+.call-color { background: var(--call-color); }
 .fold-color { background: var(--fold-color); border: 1px solid #555; }
 
 .hidden { display: none !important; }
 
-/* Version: #8 */
+/* Version: #11 */
