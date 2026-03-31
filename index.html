@@ -8,8 +8,31 @@
 </head>
 <body>
     <div id="app-container">
+        
         <header>
             <h1>Preflop Trener (40BB)</h1>
+            
+            <div id="game-stats">
+                <div class="stat-box">Poeng: <span id="score-display">0</span></div>
+                <div class="stat-box">Streak: <span id="streak-display">0</span> 🔥</div>
+            </div>
+
+            <div id="settings-panel">
+                <div class="setting-group">
+                    <label for="mode-selector">Modus:</label>
+                    <select id="mode-selector">
+                        <option value="RFI">Åpen Pott (RFI)</option>
+                        <option value="FACING_RAISE">Møter en Raise (3-Bet Trening)</option>
+                    </select>
+                </div>
+                <div class="setting-group checkbox-group">
+                    <label for="auto-range-toggle" class="toggle-label">
+                        <input type="checkbox" id="auto-range-toggle" checked>
+                        Vis range automatisk ved feil
+                    </label>
+                </div>
+            </div>
+
             <button id="btn-show-range" class="secondary-btn">Vis Range for <span id="range-pos-label">UTG</span></button>
         </header>
 
@@ -27,6 +50,7 @@
             <div id="seat-bb" class="seat">BB</div>
 
             <div id="center-info">
+                <div id="scenario-display">Åpen Pott (Ingen har høynet)</div>
                 <div id="current-pos-display">UTG</div>
                 <div id="hole-cards">
                     </div>
@@ -51,16 +75,17 @@
     <div id="range-modal" class="hidden">
         <div class="modal-content">
             <div class="modal-header">
-                <h2>Åpningsrange: <span id="modal-pos-title">UTG</span> (40BB)</h2>
+                <h2>Range: <span id="modal-pos-title">UTG</span> (40BB)</h2>
                 <button id="close-modal">&times;</button>
             </div>
             
             <div id="matrix-container">
                 </div>
             
-            <div class="legend">
-                <div class="legend-item"><span class="color-box raise-color"></span> Raise</div>
-                <div class="legend-item"><span class="color-box fold-color"></span> Fold / Limp</div>
+            <div class="legend" id="modal-legend">
+                <div class="legend-item"><span class="color-box raise-color"></span> Raise / 3-Bet</div>
+                <div class="legend-item"><span class="color-box call-color"></span> Call (Flat)</div>
+                <div class="legend-item"><span class="color-box fold-color"></span> Fold</div>
             </div>
         </div>
     </div>
