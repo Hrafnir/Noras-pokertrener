@@ -1,4 +1,4 @@
-/* Version: #11 */
+/* Version: #16 */
 
 :root {
     --poker-green: radial-gradient(circle, #2e7d32 0%, #1b5e20 100%);
@@ -73,7 +73,7 @@ header h1 {
     border-radius: 8px;
     border: 1px solid #444;
     width: 100%;
-    max-width: 600px;
+    max-width: 750px;
 }
 
 .setting-group {
@@ -83,7 +83,7 @@ header h1 {
     font-size: 0.9rem;
 }
 
-#mode-selector {
+select {
     background: #333;
     color: white;
     border: 1px solid #555;
@@ -134,7 +134,7 @@ header h1 {
     box-shadow: 0 15px 40px rgba(0,0,0,0.8), inset 0 0 40px rgba(0,0,0,0.5);
 }
 
-/* Seteplassering (9 plasser - Clockwise) */
+/* Base Seteplassering (Default 9-Max - Clockwise) */
 .seat {
     position: absolute;
     width: clamp(45px, 10vw, 60px);
@@ -148,33 +148,65 @@ header h1 {
     font-size: clamp(0.6rem, 2vw, 0.8rem);
     font-weight: bold;
     z-index: 10;
-    transition: all 0.3s ease;
+    transition: all 0.5s ease-in-out; /* Glidende overgang ved endring av bordstørrelse */
 }
 
-#seat-bb   { top: 25%; left: 5%; }
-#seat-utg  { top: 8%; left: 25%; }
+/* 9-Max posisjoner (Standard) */
+#seat-bb   { top: 25%; left: 5%; transform: none; }
+#seat-utg  { top: 8%; left: 25%; transform: none; }
 #seat-utg1 { top: 3%; left: 50%; transform: translateX(-50%); }
-#seat-utg2 { top: 8%; right: 25%; }
-#seat-lj   { top: 35%; right: 3%; }
-#seat-hj   { bottom: 20%; right: 15%; }
+#seat-utg2 { top: 8%; right: 25%; transform: none; }
+#seat-lj   { top: 35%; right: 3%; transform: none; }
+#seat-hj   { bottom: 20%; right: 15%; transform: none; }
 #seat-co   { bottom: 5%; left: 50%; transform: translateX(-50%); }
-#seat-btn  { bottom: 20%; left: 15%; }
-#seat-sb   { top: 60%; left: 3%; }
+#seat-btn  { bottom: 20%; left: 15%; transform: none; }
+#seat-sb   { top: 60%; left: 3%; transform: none; }
 
 .seat.active-hero {
     border-color: var(--gold);
     box-shadow: 0 0 20px var(--gold);
     background: #333;
-    transform: scale(1.15);
+    transform: scale(1.15) !important;
 }
 
 .seat.active-villain {
     border-color: #d32f2f;
     box-shadow: 0 0 20px #d32f2f;
     background: #4a0000;
+    transform: scale(1.15) !important;
 }
 
-/* Kort og Senter-info */
+/* === DYNAMISK BORD-GEOMETRI (Klasser styres av JS) === */
+
+/* 8-Max: Skjuler UTG1, sprer toppen litt */
+.table-8max #seat-utg1 { display: none; }
+.table-8max #seat-utg  { top: 5%; left: 35%; }
+.table-8max #seat-utg2 { top: 5%; right: 35%; }
+
+/* 6-Max: Skjuler UTG, UTG1, UTG2. LJ blir ny førsteposisjon */
+.table-6max #seat-utg, .table-6max #seat-utg1, .table-6max #seat-utg2 { display: none; }
+.table-6max #seat-bb   { top: 15%; left: 20%; }
+.table-6max #seat-lj   { top: 15%; right: 20%; }
+.table-6max #seat-hj   { top: 50%; right: 5%; transform: translateY(-50%); }
+.table-6max #seat-co   { bottom: 10%; right: 25%; }
+.table-6max #seat-btn  { bottom: 10%; left: 25%; }
+.table-6max #seat-sb   { top: 50%; left: 5%; transform: translateY(-50%); }
+
+/* 3-Max: Skjuler alt unntatt BTN, SB, BB. Trekant-formasjon */
+.table-3max #seat-utg, .table-3max #seat-utg1, .table-3max #seat-utg2, 
+.table-3max #seat-lj, .table-3max #seat-hj, .table-3max #seat-co { display: none; }
+.table-3max #seat-btn  { bottom: 10%; left: 50%; transform: translateX(-50%); }
+.table-3max #seat-sb   { top: 25%; left: 20%; }
+.table-3max #seat-bb   { top: 25%; right: 20%; }
+
+/* 2-Max (Heads-Up): Kun BTN(SB) og BB. Ansikt til ansikt */
+.table-2max .seat { display: none; }
+.table-2max #seat-btn, .table-2max #seat-bb { display: flex; }
+.table-2max #seat-btn  { bottom: 5%; left: 50%; transform: translateX(-50%); }
+.table-2max #seat-bb   { top: 5%; left: 50%; transform: translateX(-50%); }
+
+
+/* === KORT OG SENTER-INFO === */
 #center-info {
     position: absolute;
     top: 50%;
@@ -383,4 +415,4 @@ header h1 {
 
 .hidden { display: none !important; }
 
-/* Version: #11 */
+/* Version: #16 */
