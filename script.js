@@ -1,4 +1,4 @@
-/* Version: #20 - The Ultimate Pro Trainer & Cheat Sheet (Bugfix) */
+/* Version: #21 - The Ultimate Pro Trainer (Fixed BB Push/Fold Logic) */
 
 // === 1. KONFIGURASJON OG DATA ===
 
@@ -33,7 +33,7 @@ const RANGES_40 = {
         "BTN":  ["22", "33", "44", "55", "66", "77", "88", "99", "TT", "JJ", "ATs+", "KTs+", "QTs+", "JTs", "T9s", "98s", "87s", "AQo"],
         "SB":   [], 
         "BB":   ["22+", "A2s+", "K8s+", "Q9s+", "J9s+", "T9s", "98s", "87s", "76s", "AJo+", "KQo", "KJo+"],
-        "HU_BB": ["22+", "A2s+", "K2s+", "Q2s+", "J2s+", "T4s+", "95s+", "85s+", "75s+", "65s+", "A2o+", "K2o+", "Q7o+", "J8o+", "T8o+", "98o+"]
+        "HU_BB": ["22+", "A2s+", "K2s+", "Q2s+", "J5s+", "T6s+", "95s+", "85s+", "75s+", "65s+", "A2o+", "K2o+", "Q7o+", "J8o+", "T8o+", "98o+"]
     },
     THREE_BET: {
         "UTG1": ["QQ+", "AKs", "AKo"],
@@ -85,8 +85,8 @@ const RANGES_15 = {
         "CO":   ["66+", "A8s+", "A5s", "KTs+", "QTs+", "A9o+", "KTo+", "QJo"],
         "BTN":  ["55+", "A2s+", "K9s+", "Q9s+", "J9s+", "T9s", "A8o+", "KTo+", "QTo+", "JTo"],
         "SB":   ["55+", "A2s+", "K9s+", "Q9s+", "J9s+", "T9s", "A8o+", "KTo+", "QTo+", "JTo"],
-        "BB":   [], 
-        "HU_BB": [] 
+        "BB":   ["88+", "A9s+", "A5s-A4s", "KJs+", "ATo+", "KQo"], // FIKSET: Reshoves for 15BB
+        "HU_BB": ["66+", "A6s+", "KTs+", "QTs+", "JTs", "A8o+", "KTo+", "QJo"] // FIKSET: Reshoves for HU
     }
 };
 
@@ -157,13 +157,12 @@ function getActivePositions(size) {
     return [];
 }
 
-// BUGFIX HER: Sørger for at "THREE_BET" alltid slår opp i "threeBet"-objektet
 function getCorrectRangeSet(stack, type, pos, tableSize) {
     let stateType = type === "RFI" ? "rfi" : (type === "CALL" ? "call" : "threeBet");
     let fallbackPos = pos;
     
     if (!state.expanded[stack][stateType][pos]) {
-        fallbackPos = "HJ"; // Fallback for posisjoner som mangler spesifikk 3-bet config
+        fallbackPos = "HJ"; 
     }
 
     if (type === "RFI") {
@@ -239,17 +238,17 @@ function getCategoryExplanation(handStr, category, tableSize, pos) {
     const isLatePos = ["HJ", "CO", "BTN"].includes(pos);
     
     if (category === "OFFSUIT_BROADWAY") {
-        if (tableSize > 6 && isEarlyPos) return `${handStr} ser kanskje pent ut, men fra tidlig posisjon er dette en klassisk felle-hånd. Får du syn her, er du ofte dominert av AK eller AQ.`;
-        if (isLatePos || tableSize <= 6) return `I sen posisjon eller med færre spillere, øker verdien på høye kort dramatisk. Den blokkerer sterke hender og dominerer blindenes ranger.`;
+        if (tableSize > 6 && isEarlyPos) return `${handStr} ser pent ut, men fra tidlig posisjon er dette en klassisk felle-hånd. Får du syn her, er du ofte dominert.`;
+        if (isLatePos || tableSize <= 6) return `I sen posisjon eller med færre spillere, øker verdien på høye kort dramatisk. Den blokkerer sterke hender.`;
     }
     if (category === "LOW_PAIR") {
-        if (tableSize > 6 && isEarlyPos) return `Å spille små par som ${handStr} fra tidlig posisjon kan være et tapsprosjekt. Du blir ofte 3-bettet, og må treffe sett for å vinne.`;
-        return `Når bordet krymper eller du har posisjon, er ${handStr} ekstremt sterk. Du er favoritt mot nesten alle hender uten et høyere par.`;
+        if (tableSize > 6 && isEarlyPos) return `Å spille små par som ${handStr} fra tidlig posisjon kan være et tapsprosjekt da du ofte møter høynelser og må treffe sett.`;
+        return `Når bordet krymper eller du har posisjon, er ${handStr} ekstremt sterk. Favoritt mot nesten alle usammenkoblede hender.`;
     }
-    if (category === "SUITED_WHEEL_ACE") return `${handStr} er et fantastisk våpen! Den blokkerer sterke ess, kan treffe nut-flush, og lage straight (wheel) på lave bord. Essensiell bløff.`;
+    if (category === "SUITED_WHEEL_ACE") return `${handStr} er et fantastisk våpen! Den blokkerer sterke ess, kan treffe nut-flush, og lage straight (wheel).`;
     if (category === "TRASH") return tableSize === 2 ? `Selv i Heads-Up må vi trekke en grense. ${handStr} er for svak. Fold!` : `Dette er åpenbart søppel. Hold deg unna.`;
-    if (category === "SUITED_CONNECTOR") return `${handStr} spiller utrolig bra postflop fordi den lett kan treffe sterke trekk. Den realiserer equityen sin utmerket.`;
-    if (category === "PREMIUM_PAIR" || category === "PREMIUM_BROADWAY") return `Monsterhånd! ${handStr} skal spilles knallhardt for å bygge en stor pott mens du er favoritt.`;
+    if (category === "SUITED_CONNECTOR") return `${handStr} spiller utrolig bra postflop fordi den lett kan treffe sterke trekk og realiserer equityen bra.`;
+    if (category === "PREMIUM_PAIR" || category === "PREMIUM_BROADWAY") return `Monsterhånd! ${handStr} skal spilles aggressivt for å bygge en stor pott.`;
 
     return `Posisjon og spillere bak deg avgjør hvor profitabel denne hånden er.`;
 }
@@ -290,7 +289,6 @@ function dealNewHand() {
         state.villainPosString = villainOptions[Math.floor(Math.random() * villainOptions.length)];
     }
 
-    // FOKUSMODUS LOGIKK
     let generatedObj = generateRandomHand();
     if (focusMode) {
         let maxAttempts = 150; 
@@ -358,11 +356,13 @@ function checkAction(userAction) {
 
         if (userAction === "RAISE") {
             if (is3Bet) { isCorrect = true; text = `Solid aggressivt spill! ${categoryExplanation}`; }
-            else if (isMarginalOutside(state.handStr, threeBetRange)) { title = "NESTEN RIKTIG!"; statusClass = "marginal"; text = `Rett under grensen for 3-bet her.`; contextText = getExploitativeContext(state.handStr, false); }
+            else if (isMarginalOutside(state.handStr, threeBetRange)) { title = "NESTEN RIKTIG!"; statusClass = "marginal"; text = `Rett under grensen for aggressivt re-raise her.`; contextText = getExploitativeContext(state.handStr, false); }
             else { text = `Overspill. Du bør ikke høyne denne. ${categoryExplanation}`; }
         } else if (userAction === "CALL") {
-            if (isCall) { isCorrect = true; text = `Godt forsvar (flat-call). ${categoryExplanation}`; }
-            else if (is3Bet) { text = `Feil! Denne er så sterk at den MÅ re-raises.`; }
+            // FIX: Vi sjekker is3Bet først, slik at Call-valg på AA straffes
+            if (pos === "SB" && state.tableSize > 2) { text = "Fra SB spiller moderne GTO nesten utelukkende 3-bet eller fold mot en raise."; }
+            else if (is3Bet) { text = `Feil! Denne er så sterk at den MÅ re-raises (All-in / 3-Bet). Ikke bare syn!`; }
+            else if (isCall) { isCorrect = true; text = `Godt forsvar (flat-call). ${categoryExplanation}`; }
             else if (isMarginalOutside(state.handStr, callRange)) { title = "NESTEN RIKTIG!"; statusClass = "marginal"; text = `Akkurat for svak til å forsvare.`; contextText = getExploitativeContext(state.handStr, false); }
             else { text = `Hånden er altfor svak til å syne en raise med. Fold!`; }
         } else { // FOLD
@@ -370,7 +370,7 @@ function checkAction(userAction) {
             else if (isMarginalInside(state.handStr, callRange) || isMarginalInside(state.handStr, threeBetRange)) {
                 title = "NESTEN RIKTIG!"; statusClass = "marginal"; text = `Litt for forsiktig! Innafor å forsvare.`; contextText = getExploitativeContext(state.handStr, true);
             }
-            else { text = `Feil! Denne hånden er for sterk til å kastes mot en raise.`; }
+            else { text = `Feil! Denne hånden er altfor sterk til å kastes.`; }
         }
     }
 
