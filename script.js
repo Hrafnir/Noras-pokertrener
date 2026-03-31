@@ -1,4 +1,4 @@
-/* Version: #17 */
+/* Version: #18 */
 
 // === 1. KONFIGURASJON OG DATA ===
 
@@ -22,7 +22,7 @@ const RFI_RANGES = {
     "BTN":  ["22+", "A2s+", "K2s+", "Q2s+", "J5s+", "T6s+", "96s+", "85s+", "75s+", "64s+", "54s+", "A2o+", "K9o+", "Q9o+", "J9o+", "T9o+"],
     "SB_RAISE": ["55+", "A8s+", "A5s-A4s", "KJs+", "QJs", "AJo+", "KQo"],
     "SB_LIMP":  ["22+", "A2s+", "K2s+", "Q2s+", "J2s+", "T2s+", "95s+", "84s+", "74s+", "63s+", "53s+", "43s+", "A2o+", "K5o+", "Q8o+", "J8o+", "T8o+", "98o+"],
-    "HU_BTN": ["22+", "A2s+", "K2s+", "Q2s+", "J2s+", "T2s+", "94s+", "84s+", "74s+", "64s+", "54s+", "A2o+", "K2o+", "Q4o+", "J6o+", "T7o+", "97o+", "87o+"] // Ekstremt bred Heads-Up range
+    "HU_BTN": ["22+", "A2s+", "K2s+", "Q2s+", "J2s+", "T2s+", "94s+", "84s+", "74s+", "64s+", "54s+", "A2o+", "K2o+", "Q4o+", "J6o+", "T7o+", "97o+", "87o+"]
 };
 
 // GTO Defense Ranges (Møter en Raise)
@@ -35,7 +35,7 @@ const CALL_RANGES = {
     "BTN":  ["22", "33", "44", "55", "66", "77", "88", "99", "TT", "JJ", "ATs+", "KTs+", "QTs+", "JTs", "T9s", "98s", "87s", "AQo"],
     "SB":   [], 
     "BB":   ["22+", "A2s+", "K8s+", "Q9s+", "J9s+", "T9s", "98s", "87s", "76s", "AJo+", "KQo", "KJo+"],
-    "HU_BB": ["22+", "A2s+", "K2s+", "Q2s+", "J2s+", "T4s+", "95s+", "85s+", "75s+", "65s+", "A2o+", "K2o+", "Q7o+", "J8o+", "T8o+", "98o+"] // HU BB forsvarer veldig bredt mot BTN
+    "HU_BB": ["22+", "A2s+", "K2s+", "Q2s+", "J2s+", "T4s+", "95s+", "85s+", "75s+", "65s+", "A2o+", "K2o+", "Q7o+", "J8o+", "T8o+", "98o+"]
 };
 
 const THREE_BET_RANGES = {
@@ -47,7 +47,7 @@ const THREE_BET_RANGES = {
     "BTN":  ["QQ+", "AKs", "AQs", "AJs", "AKo", "A5s-A2s"],
     "SB":   ["99+", "AJs+", "KQs", "AQo+", "A5s-A4s"], 
     "BB":   ["JJ+", "AQs+", "AKo", "A5s-A2s"],
-    "HU_BB": ["88+", "A9s+", "KJs+", "QJs", "AJo+", "KQo", "A5s-A2s"] // Tøff 3-bet fra BB i Heads-Up
+    "HU_BB": ["88+", "A9s+", "KJs+", "QJs", "AJo+", "KQo", "A5s-A2s"] 
 };
 
 // === 2. APP-TILSTAND ===
@@ -73,7 +73,6 @@ function getHandCategory(handStr) {
     if (["JJ", "TT"].includes(handStr)) return "HIGH_PAIR";
     if (["99", "88", "77"].includes(handStr)) return "MID_PAIR";
     if (handStr.length === 2) return "LOW_PAIR"; 
-
     if (["AKs", "AKo", "AQs", "AQo"].includes(handStr)) return "PREMIUM_BROADWAY";
     if (["A5s", "A4s", "A3s", "A2s"].includes(handStr)) return "SUITED_WHEEL_ACE";
     
@@ -82,32 +81,54 @@ function getHandCategory(handStr) {
     
     if (handStr[0] === 'A' && isSuited && v2 >= 5 && v2 <= 8) return "MID_SUITED_ACE"; 
     if (v1 <= 4 && v2 <= 4) return isSuited ? "SUITED_BROADWAY" : "OFFSUIT_BROADWAY";
-    
     if (isSuited) {
         if (v2 - v1 === 1) return "SUITED_CONNECTOR";
         if (v2 - v1 === 2) return "SUITED_GAPPER";
     }
-
     if (!isSuited && (v1 > 4 || v2 > 4) && (v2 - v1 > 1)) return "TRASH";
     return "GENERAL";
 }
 
-function getCategoryExplanation(category, tableSize) {
-    let prefix = "";
-    if (tableSize === 2) prefix = "💡 [Heads-Up] I Heads-Up må du være knallhard! Blindene spiser deg opp hvis du venter på gode kort. ";
-    else if (tableSize <= 6) prefix = "💡 [Short-Handed] Med færre spillere ved bordet øker verdien på nesten alle hender. Spilles bredere! ";
-
-    switch(category) {
-        case "SUITED_WHEEL_ACE": return prefix + "Moderne GTO elsker A2s-A5s! De blokkerer sterke ess, kan treffe nut-flush, og lage straight (wheel) på lave bord. Perfekte bløff-kandidater.";
-        case "PREMIUM_PAIR": return prefix + "Monsterpar. Disse skal spilles knallhardt for å bygge pott og hente verdi.";
-        case "HIGH_PAIR": return prefix + "Sterke par (TT-JJ). Solide, men krever forsiktighet postflop hvis overkort treffer.";
-        case "MID_PAIR": return prefix + "Mellomstore par (77-99) spilles primært for å 'set-mine' eller vinne mot overkort på lave bord.";
-        case "LOW_PAIR": return prefix + (tableSize > 6 ? "Små par mister verdi i tidlig posisjon fordi de ofte møter 3-bets. Knallgode fra sen posisjon!" : "Små par er ekstremt sterke når dere er få spillere. Du treffer sjelden sett, men paret er ofte best uansett!");
-        case "SUITED_CONNECTOR": return prefix + "Suited connectors (f.eks 87s) spiller fantastisk postflop. De realiserer equity bra og treffer sterke trekk.";
-        case "OFFSUIT_BROADWAY": return prefix + (tableSize > 6 ? "Offsuit broadways (som KJo) er felle-hender fra tidlig posisjon." : "Når bordet er lite (som nå), er høye offsuit kort mye mer verdifulle og spilles oftere for ren kortverdi.");
-        case "TRASH": return prefix + (tableSize === 2 ? "Selv i Heads-up er det grenser. Dette er søppel, kast den!" : "Søppel. Kast og vent på et bedre spot!");
-        default: return prefix + "Suited hender foretrekkes generelt over offsuit på grunn av mye bedre 'spillbarhet' postflop.";
+// NY DYNAMISK TILBAKEMELDINGSMOTOR
+function getCategoryExplanation(handStr, category, tableSize, pos) {
+    const isEarlyPos = ["UTG", "UTG1", "UTG2", "LJ"].includes(pos);
+    const isLatePos = ["HJ", "CO", "BTN"].includes(pos);
+    const isBlinds = ["SB", "BB"].includes(pos);
+    
+    if (category === "OFFSUIT_BROADWAY") {
+        if (tableSize > 6 && isEarlyPos) {
+            return `${handStr} ser kanskje pent ut, men fra tidlig posisjon med mange spillere bak deg er dette en klassisk felle-hånd. Får du syn her, er du ofte dominert av hender som AK eller AQ. Kast den!`;
+        } else if (isLatePos || tableSize <= 6) {
+            return `I sen posisjon, eller med færre spillere ved bordet, øker verdien på høye kort som ${handStr} dramatisk. Den blokkerer sterke hender og dominerer blindenes ranger. Glimrende å angripe med!`;
+        }
     }
+    
+    if (category === "LOW_PAIR") {
+        if (tableSize > 6 && isEarlyPos) {
+            return `Å spille små par som ${handStr} fra tidlig posisjon er et tapsprosjekt. Du blir ofte 3-bettet, og hvis ikke, må du treffe et sett på floppen for å vinne. Kast!`;
+        } else {
+            return `Når bordet krymper eller du har posisjon, er ${handStr} ekstremt sterk. Du er matematisk favoritt mot nesten alle hender uten et høyere par. Kjør på!`;
+        }
+    }
+
+    if (category === "SUITED_WHEEL_ACE") {
+        return `${handStr} er et fantastisk våpen i moderne GTO! Den blokkerer sterke ess, kan treffe den høyeste flushen, og kan lage straight (wheel) på lave bord. Essensiell for å balansere bløffene dine.`;
+    }
+
+    if (category === "TRASH") {
+        if (tableSize === 2) return `Selv i Heads-Up må vi trekke en grense. ${handStr} er rett og slett for svak til å investere sjetonger i. Muck it!`;
+        return `Dette er åpenbart søppel. Hold deg unna ${handStr} og vent på en bedre anledning.`;
+    }
+
+    if (category === "SUITED_CONNECTOR") {
+        return `${handStr} spiller utrolig bra postflop fordi den lett kan treffe sterke trekk (straights og flushes). Den realiserer equityen sin utmerket.`;
+    }
+
+    if (category === "PREMIUM_PAIR" || category === "PREMIUM_BROADWAY") {
+        return `Monsterhånd! ${handStr} skal spilles aggressivt i nesten alle situasjoner for å bygge en stor pott mens du er storfavoritt.`;
+    }
+
+    return `Suitede og tilkoblede hender foretrekkes generelt, men posisjon dikterer om ${handStr} er verdt et forsøk.`;
 }
 
 // === 4. DYNAMISK "NESTEN RIKTIG" LOGIKK ===
@@ -166,7 +187,6 @@ function expandRangeConfig(rangeArr) {
 }
 
 function initializeRanges() {
-    log("Kalkulerer og utvider alle ranges inkludert Heads-Up...");
     for (let pos in RFI_RANGES) state.expanded.rfi[pos] = expandRangeConfig(RFI_RANGES[pos]);
     for (let pos in CALL_RANGES) state.expanded.call[pos] = expandRangeConfig(CALL_RANGES[pos]);
     for (let pos in THREE_BET_RANGES) state.expanded.threeBet[pos] = expandRangeConfig(THREE_BET_RANGES[pos]);
@@ -177,50 +197,8 @@ function getActivePositions(size) {
     if (size === 8) return ["UTG", "UTG2", "LJ", "HJ", "CO", "BTN", "SB", "BB"]; 
     if (size === 6) return ["LJ", "HJ", "CO", "BTN", "SB", "BB"];
     if (size === 3) return ["BTN", "SB", "BB"];
-    if (size === 2) return ["BTN", "BB"]; // I HU er BTN også SB
+    if (size === 2) return ["BTN", "BB"]; 
     return [];
-}
-
-// === 6. SPILLELOGIKK ===
-
-function dealNewHand() {
-    const mode = document.getElementById('mode-selector').value;
-    state.tableSize = parseInt(document.getElementById('table-size-selector').value);
-    state.activePositions = getActivePositions(state.tableSize);
-    
-    // Sett CSS for bordgeometri
-    const gameArea = document.getElementById('game-area');
-    gameArea.className = (state.tableSize < 9) ? `table-${state.tableSize}max` : '';
-
-    log(`Deler ny hånd. Modus: ${mode}, Bord: ${state.tableSize}-Max`);
-
-    if (mode === "RFI") {
-        // I RFI øver vi ikke på BB lenger (Walks er bortkastet tid)
-        let rfiOptions = state.activePositions.filter(p => p !== "BB");
-        state.currentPosString = rfiOptions[Math.floor(Math.random() * rfiOptions.length)];
-        state.villainPosString = "";
-    } else { // FACING RAISE
-        // Hero kan ikke være den første som handler (må være plass til en raiser før)
-        let heroOptions = state.activePositions.slice(1);
-        state.currentPosString = heroOptions[Math.floor(Math.random() * heroOptions.length)];
-        
-        // Villain MÅ være posisjonen før Hero
-        let heroIdx = state.activePositions.indexOf(state.currentPosString);
-        let villainOptions = state.activePositions.slice(0, heroIdx);
-        state.villainPosString = villainOptions[Math.floor(Math.random() * villainOptions.length)];
-    }
-
-    // Kortgenerering
-    let c1v = Math.floor(Math.random() * 13), c1s = Math.floor(Math.random() * 4);
-    let c2v = Math.floor(Math.random() * 13), c2s = Math.floor(Math.random() * 4);
-    while (c1v === c2v && c1s === c2s) { c2v = Math.floor(Math.random() * 13); c2s = Math.floor(Math.random() * 4); }
-
-    state.hand = [{ v: VALUES[c1v], s: SUITS[c1s], idx: c1v }, { v: VALUES[c2v], s: SUITS[c2s], idx: c2v }];
-    state.isSuited = c1s === c2s;
-    state.hand.sort((a, b) => a.idx - b.idx);
-    state.handStr = (state.hand[0].v === state.hand[1].v) ? state.hand[0].v + state.hand[1].v : state.hand[0].v + state.hand[1].v + (state.isSuited ? "s" : "o");
-    
-    updateUI();
 }
 
 function getCorrectRangeSet(type) {
@@ -238,10 +216,83 @@ function getCorrectRangeSet(type) {
     }
 }
 
+// === 6. SPILLELOGIKK OG FOKUSMODUS ===
+
+function generateRandomHand() {
+    let c1v = Math.floor(Math.random() * 13), c1s = Math.floor(Math.random() * 4);
+    let c2v = Math.floor(Math.random() * 13), c2s = Math.floor(Math.random() * 4);
+    while (c1v === c2v && c1s === c2s) { c2v = Math.floor(Math.random() * 13); c2s = Math.floor(Math.random() * 4); }
+
+    let hand = [{ v: VALUES[c1v], s: SUITS[c1s], idx: c1v }, { v: VALUES[c2v], s: SUITS[c2s], idx: c2v }];
+    hand.sort((a, b) => a.idx - b.idx);
+    let isSuited = c1s === c2s;
+    let handStr = (hand[0].v === hand[1].v) ? hand[0].v + hand[1].v : hand[0].v + hand[1].v + (isSuited ? "s" : "o");
+    
+    return { hand, isSuited, handStr };
+}
+
+function dealNewHand() {
+    const mode = document.getElementById('mode-selector').value;
+    const focusMode = document.getElementById('focus-mode-toggle').checked;
+    state.tableSize = parseInt(document.getElementById('table-size-selector').value);
+    state.activePositions = getActivePositions(state.tableSize);
+    
+    document.getElementById('game-area').className = (state.tableSize < 9) ? `table-${state.tableSize}max` : '';
+
+    if (mode === "RFI") {
+        let rfiOptions = state.activePositions.filter(p => p !== "BB");
+        state.currentPosString = rfiOptions[Math.floor(Math.random() * rfiOptions.length)];
+        state.villainPosString = "";
+    } else { 
+        let heroOptions = state.activePositions.slice(1);
+        state.currentPosString = heroOptions[Math.floor(Math.random() * heroOptions.length)];
+        let heroIdx = state.activePositions.indexOf(state.currentPosString);
+        let villainOptions = state.activePositions.slice(0, heroIdx);
+        state.villainPosString = villainOptions[Math.floor(Math.random() * villainOptions.length)];
+    }
+
+    // FOKUSMODUS - Finn en marginal hånd!
+    let generatedObj = generateRandomHand();
+    
+    if (focusMode) {
+        let maxAttempts = 150; // Sikkerhetsstopp for å unngå evig loop
+        let foundMarginal = false;
+        
+        while (maxAttempts > 0 && !foundMarginal) {
+            let tempObj = generateRandomHand();
+            let isMarginal = false;
+
+            if (mode === "RFI") {
+                let range = getCorrectRangeSet("RFI");
+                if (isMarginalInside(tempObj.handStr, range) || isMarginalOutside(tempObj.handStr, range)) isMarginal = true;
+            } else {
+                let callR = getCorrectRangeSet("CALL");
+                let betR = getCorrectRangeSet("3BET");
+                if (isMarginalInside(tempObj.handStr, callR) || isMarginalOutside(tempObj.handStr, callR) ||
+                    isMarginalInside(tempObj.handStr, betR) || isMarginalOutside(tempObj.handStr, betR)) {
+                    isMarginal = true;
+                }
+            }
+
+            if (isMarginal) {
+                generatedObj = tempObj;
+                foundMarginal = true;
+            }
+            maxAttempts--;
+        }
+    }
+
+    state.hand = generatedObj.hand;
+    state.isSuited = generatedObj.isSuited;
+    state.handStr = generatedObj.handStr;
+    
+    updateUI();
+}
+
 function checkAction(userAction) {
     const pos = state.currentPosString;
     const mode = document.getElementById('mode-selector').value;
-    const categoryExplanation = getCategoryExplanation(getHandCategory(state.handStr), state.tableSize);
+    const categoryExplanation = getCategoryExplanation(state.handStr, getHandCategory(state.handStr), state.tableSize, pos);
     
     let isCorrect = false;
     let title = "", text = "", statusClass = "";
@@ -274,7 +325,7 @@ function checkAction(userAction) {
 
         if (userAction === "RAISE") {
             if (is3Bet) { isCorrect = true; text = `Solid 3-Bet! ${categoryExplanation}`; }
-            else if (isMarginalOutside(state.handStr, threeBetRange)) { title = "NESTEN RIKTIG!"; statusClass = "marginal"; text = `God idé, men rett under grensen for 3-bet bløff/verdi her. ${categoryExplanation}`; }
+            else if (isMarginalOutside(state.handStr, threeBetRange)) { title = "NESTEN RIKTIG!"; statusClass = "marginal"; text = `God idé, men rett under grensen for 3-bet her. ${categoryExplanation}`; }
             else { text = `Overspill. Du bør ikke 3-bette denne. ${categoryExplanation}`; }
         } else if (userAction === "CALL") {
             if (pos === "SB" && state.tableSize > 2) { text = "Fra SB spiller moderne GTO nesten utelukkende 3-bet eller fold mot en raise."; }
@@ -401,9 +452,10 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('close-modal').addEventListener('click', closeModal);
     document.getElementById('mode-selector').addEventListener('change', dealNewHand);
     document.getElementById('table-size-selector').addEventListener('change', dealNewHand);
+    document.getElementById('focus-mode-toggle').addEventListener('change', dealNewHand);
     document.getElementById('range-modal').addEventListener('click', (e) => { if (e.target.id === 'range-modal') closeModal(); });
 
     dealNewHand();
 });
 
-/* Version: #17 */
+/* Version: #18 */
