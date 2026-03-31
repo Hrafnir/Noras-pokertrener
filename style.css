@@ -1,4 +1,4 @@
-/* Version: #16 */
+/* Version: #19 */
 
 :root {
     --poker-green: radial-gradient(circle, #2e7d32 0%, #1b5e20 100%);
@@ -7,8 +7,8 @@
     --bg-dark: #121212;
     --panel-bg: #1e1e1e;
     --raise-color: #d32f2f;
-    --fold-color: #333333;
     --call-color: #1976d2;
+    --fold-color: #333333;
 }
 
 * {
@@ -32,6 +32,7 @@ body {
     display: flex;
     flex-direction: column;
     padding: 10px;
+    align-items: center;
 }
 
 /* === HEADER, STATS OG INNSTILLINGER === */
@@ -42,12 +43,35 @@ header {
     flex-direction: column;
     align-items: center;
     gap: 10px;
+    width: 100%;
 }
 
 header h1 {
     font-size: 1.5rem;
     color: white;
     margin-bottom: 5px;
+}
+
+/* Hovedknapp for Oppslagsverk */
+.primary-btn {
+    background: #1976d2;
+    color: white;
+    font-size: 1.1rem;
+    font-weight: bold;
+    padding: 12px 24px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(25, 118, 210, 0.4);
+    transition: transform 0.2s, background 0.2s;
+    width: 100%;
+    max-width: 400px;
+    margin-bottom: 5px;
+}
+
+.primary-btn:hover {
+    background: #1565c0;
+    transform: scale(1.03);
 }
 
 #game-stats {
@@ -87,9 +111,10 @@ select {
     background: #333;
     color: white;
     border: 1px solid #555;
-    padding: 5px 10px;
+    padding: 6px 10px;
     border-radius: 5px;
     outline: none;
+    font-size: 0.9rem;
 }
 
 .toggle-label {
@@ -134,7 +159,7 @@ select {
     box-shadow: 0 15px 40px rgba(0,0,0,0.8), inset 0 0 40px rgba(0,0,0,0.5);
 }
 
-/* Base Seteplassering (Default 9-Max - Clockwise) */
+/* Seteplassering */
 .seat {
     position: absolute;
     width: clamp(45px, 10vw, 60px);
@@ -148,19 +173,18 @@ select {
     font-size: clamp(0.6rem, 2vw, 0.8rem);
     font-weight: bold;
     z-index: 10;
-    transition: all 0.5s ease-in-out; /* Glidende overgang ved endring av bordstørrelse */
+    transition: all 0.5s ease-in-out;
 }
 
-/* 9-Max posisjoner (Standard) */
-#seat-bb   { top: 25%; left: 5%; transform: none; }
-#seat-utg  { top: 8%; left: 25%; transform: none; }
+#seat-bb   { top: 25%; left: 5%; }
+#seat-utg  { top: 8%; left: 25%; }
 #seat-utg1 { top: 3%; left: 50%; transform: translateX(-50%); }
-#seat-utg2 { top: 8%; right: 25%; transform: none; }
-#seat-lj   { top: 35%; right: 3%; transform: none; }
-#seat-hj   { bottom: 20%; right: 15%; transform: none; }
+#seat-utg2 { top: 8%; right: 25%; }
+#seat-lj   { top: 35%; right: 3%; }
+#seat-hj   { bottom: 20%; right: 15%; }
 #seat-co   { bottom: 5%; left: 50%; transform: translateX(-50%); }
-#seat-btn  { bottom: 20%; left: 15%; transform: none; }
-#seat-sb   { top: 60%; left: 3%; transform: none; }
+#seat-btn  { bottom: 20%; left: 15%; }
+#seat-sb   { top: 60%; left: 3%; }
 
 .seat.active-hero {
     border-color: var(--gold);
@@ -176,14 +200,11 @@ select {
     transform: scale(1.15) !important;
 }
 
-/* === DYNAMISK BORD-GEOMETRI (Klasser styres av JS) === */
-
-/* 8-Max: Skjuler UTG1, sprer toppen litt */
+/* Dynamisk Geometri */
 .table-8max #seat-utg1 { display: none; }
 .table-8max #seat-utg  { top: 5%; left: 35%; }
 .table-8max #seat-utg2 { top: 5%; right: 35%; }
 
-/* 6-Max: Skjuler UTG, UTG1, UTG2. LJ blir ny førsteposisjon */
 .table-6max #seat-utg, .table-6max #seat-utg1, .table-6max #seat-utg2 { display: none; }
 .table-6max #seat-bb   { top: 15%; left: 20%; }
 .table-6max #seat-lj   { top: 15%; right: 20%; }
@@ -192,19 +213,16 @@ select {
 .table-6max #seat-btn  { bottom: 10%; left: 25%; }
 .table-6max #seat-sb   { top: 50%; left: 5%; transform: translateY(-50%); }
 
-/* 3-Max: Skjuler alt unntatt BTN, SB, BB. Trekant-formasjon */
 .table-3max #seat-utg, .table-3max #seat-utg1, .table-3max #seat-utg2, 
 .table-3max #seat-lj, .table-3max #seat-hj, .table-3max #seat-co { display: none; }
 .table-3max #seat-btn  { bottom: 10%; left: 50%; transform: translateX(-50%); }
 .table-3max #seat-sb   { top: 25%; left: 20%; }
 .table-3max #seat-bb   { top: 25%; right: 20%; }
 
-/* 2-Max (Heads-Up): Kun BTN(SB) og BB. Ansikt til ansikt */
 .table-2max .seat { display: none; }
 .table-2max #seat-btn, .table-2max #seat-bb { display: flex; }
 .table-2max #seat-btn  { bottom: 5%; left: 50%; transform: translateX(-50%); }
 .table-2max #seat-bb   { top: 5%; left: 50%; transform: translateX(-50%); }
-
 
 /* === KORT OG SENTER-INFO === */
 #center-info {
@@ -233,7 +251,6 @@ select {
     font-weight: bold;
     font-size: 1.2rem;
     margin-bottom: 8px;
-    letter-spacing: 1px;
 }
 
 #hole-cards {
@@ -255,7 +272,6 @@ select {
     font-weight: bold;
     box-shadow: 2px 5px 10px rgba(0,0,0,0.6);
 }
-
 .card.red { color: var(--raise-color); }
 .card.black { color: #111; }
 
@@ -265,6 +281,7 @@ select {
     grid-template-columns: 1fr 1fr 1fr;
     gap: 10px;
     margin-bottom: 15px;
+    width: 100%;
 }
 
 .action-btn {
@@ -292,6 +309,7 @@ select {
     text-align: center;
     border-top: 4px solid transparent;
     animation: slideDown 0.3s ease-out;
+    width: 100%;
 }
 
 @keyframes slideDown {
@@ -304,7 +322,21 @@ select {
 #feedback-section.marginal { border-top-color: #ff9800; }
 
 #feedback-title { margin-bottom: 10px; font-size: 1.2rem; }
-#feedback-text { margin-bottom: 20px; line-height: 1.4; color: #ddd; }
+#feedback-text { line-height: 1.4; color: #ddd; }
+
+/* Kontekst-tips (Utnyttende Spill) */
+.context-box {
+    background: rgba(255, 255, 255, 0.05);
+    border-left: 4px solid var(--gold);
+    padding: 12px;
+    margin-top: 15px;
+    margin-bottom: 15px;
+    font-size: 0.95rem;
+    font-style: italic;
+    text-align: left;
+    border-radius: 4px;
+    color: #e0e0e0;
+}
 
 .next-btn {
     width: 100%;
@@ -316,10 +348,11 @@ select {
     border: none;
     border-radius: 8px;
     cursor: pointer;
+    margin-top: 10px;
 }
 
-/* === RANGE MATRISE MODAL === */
-#range-modal {
+/* === RANGE MATRISE MODALER (Trening og Cheat Sheet) === */
+#range-modal, #cheat-sheet-modal {
     position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;
     background: rgba(0,0,0,0.85);
@@ -337,6 +370,12 @@ select {
     border-radius: 10px;
     padding: 20px;
     box-shadow: 0 10px 30px rgba(0,0,0,0.9);
+    max-height: 95vh;
+    overflow-y: auto;
+}
+
+.cheat-sheet-content {
+    max-width: 650px; /* Litt bredere for å få plass til dropdowns */
 }
 
 .modal-header {
@@ -348,7 +387,7 @@ select {
     padding-bottom: 10px;
 }
 
-#close-modal {
+.close-btn {
     background: none;
     border: none;
     color: white;
@@ -357,7 +396,25 @@ select {
     line-height: 1;
 }
 
-#matrix-container {
+/* Cheat Sheet Kontroller */
+.cheat-sheet-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 15px;
+    justify-content: center;
+}
+
+.cs-select {
+    padding: 8px 12px;
+    background: #2a2a2a;
+    color: var(--gold);
+    border: 1px solid #666;
+    border-radius: 5px;
+    font-weight: bold;
+}
+
+.matrix-grid {
     display: grid;
     grid-template-columns: repeat(13, 1fr);
     gap: 2px;
@@ -383,7 +440,6 @@ select {
 .matrix-cell.call { background: var(--call-color); color: white; }
 .matrix-cell.limp { background: var(--call-color); color: white; }
 
-/* Highlight-animasjon for spesifikk hånd */
 .matrix-cell.highlight-hand {
     border: 3px solid var(--gold);
     color: white;
@@ -415,4 +471,4 @@ select {
 
 .hidden { display: none !important; }
 
-/* Version: #16 */
+/* Version: #19 */
