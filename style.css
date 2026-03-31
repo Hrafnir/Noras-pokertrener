@@ -1,0 +1,192 @@
+/* Version: #2 */
+
+:root {
+    --poker-green: #2e7d32;
+    --table-border: #5d4037;
+    --card-white: #ffffff;
+    --card-red: #d32f2f;
+    --card-black: #212121;
+    --action-gold: #ffc107;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #1a1a1a;
+    color: white;
+    display: flex;
+    justify-content: center;
+    padding: 20px;
+}
+
+#app-container {
+    max-width: 900px;
+    width: 100%;
+    text-align: center;
+}
+
+header h1 {
+    margin-bottom: 10px;
+    color: var(--action-gold);
+}
+
+header p {
+    margin-bottom: 20px;
+    font-size: 0.9rem;
+    opacity: 0.8;
+}
+
+/* === POKERBORDET === */
+#poker-table-area {
+    position: relative;
+    height: 400px;
+    margin-bottom: 30px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+#poker-table {
+    width: 80%;
+    height: 250px;
+    background-color: var(--poker-green);
+    border: 15px solid var(--table-border);
+    border-radius: 125px;
+    position: relative;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5), inset 0 0 50px rgba(0,0,0,0.3);
+}
+
+/* Seteplassering (9 plasser) */
+.seat {
+    position: absolute;
+    width: 60px;
+    height: 60px;
+    background: #333;
+    border: 2px solid #777;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 0.75rem;
+    font-weight: bold;
+    z-index: 10;
+}
+
+/* Plassering av seter i en ellipse rundt bordet */
+#seat-utg  { top: 10%;  left: 15%; }
+#seat-utg1 { top: -15%; left: 45%; }
+#seat-utg2 { top: 10%;  right: 15%; }
+#seat-lj   { top: 40%;  right: -5%; }
+#seat-hj   { bottom: 5%; right: 15%; }
+#seat-co   { bottom: -15%; left: 65%; }
+#seat-btn  { bottom: -15%; left: 25%; }
+#seat-sb   { bottom: 5%; left: 15%; }
+#seat-bb   { top: 40%;  left: -5%; }
+
+.seat.active-hero {
+    border-color: var(--action-gold);
+    box-shadow: 0 0 15px var(--action-gold);
+    transform: scale(1.1);
+}
+
+.pos-label {
+    color: #fff;
+}
+
+/* === KORTENE === */
+#table-center {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+#hole-cards {
+    display: flex;
+    gap: 10px;
+}
+
+.card {
+    width: 60px;
+    height: 85px;
+    background: var(--card-white);
+    border-radius: 5px;
+    color: black;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 1.5rem;
+    font-weight: bold;
+    box-shadow: 2px 2px 5px rgba(0,0,0,0.3);
+}
+
+.card.red { color: var(--card-red); }
+.card.black { color: var(--card-black); }
+
+/* === KONTROLLPANEL === */
+#control-panel {
+    background: #2a2a2a;
+    padding: 20px;
+    border-radius: 10px;
+    border: 1px solid #444;
+}
+
+#scenario-info {
+    margin-bottom: 20px;
+    border-bottom: 1px solid #444;
+    padding-bottom: 10px;
+}
+
+#action-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.action-btn {
+    padding: 12px 30px;
+    font-size: 1.1rem;
+    font-weight: bold;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: transform 0.1s, background 0.2s;
+}
+
+.action-btn:active { transform: scale(0.95); }
+
+#btn-fold { background: #555; color: white; }
+#btn-call { background: #0288d1; color: white; }
+#btn-raise { background: #d84315; color: white; }
+
+/* === TILBAKEMELDING === */
+#feedback-panel {
+    margin-top: 15px;
+    padding: 15px;
+    border-radius: 5px;
+    background: #383838;
+}
+
+#feedback-panel.correct { border-left: 10px solid #4caf50; }
+#feedback-panel.wrong { border-left: 10px solid #f44336; }
+#feedback-panel.marginal { border-left: 10px solid var(--action-gold); }
+
+#btn-next-hand {
+    margin-top: 15px;
+    padding: 10px 20px;
+    background: var(--action-gold);
+    border: none;
+    border-radius: 5px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.hidden { display: none; }
+
+/* Version: #2 */
