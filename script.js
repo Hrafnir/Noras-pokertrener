@@ -1,208 +1,295 @@
-/**
- * VERSION #6 - COMPLETE PROFESSIONAL GTO TRAINER ENGINE
- * Optimalisert for 40BB MTT RFI (Raise First In)
- */
+/* Version: #8 */
 
-// 1. KONFIGURASJON OG DATAGRUNNLAG
-const POSITIONS = ["UTG", "UTG1", "UTG2", "LJ", "HJ", "CO", "BTN", "SB"];
-const VALUES = ['2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K', 'A'];
-const SUITS = [
-    { name: 'spades', symbol: '♠', color: 'black' },
-    { name: 'hearts', symbol: '♥', color: 'red' },
-    { name: 'diamonds', symbol: '♦', color: 'red' },
-    { name: 'clubs', symbol: '♣', color: 'black' }
-];
-
-/**
- * GTO RANGES (40BB Perimeters)
- * Formatet definerer minimumskravene for hver kategori per posisjon.
- */
-const GTO_RANGES = {
-    "UTG":  { pairs: '77', suitedA: 'AT', offsuitA: 'AK', suitedK: 'KQ', extras: ['QJs', 'JTs'] },
-    "UTG1": { pairs: '66', suitedA: 'A9', offsuitA: 'AQ', suitedK: 'KJ', extras: ['QJs', 'JTs'] },
-    "UTG2": { pairs: '55', suitedA: 'A8', offsuitA: 'AJ', suitedK: 'KT', extras: ['QJs', 'JTs', 'T9s'] },
-    "LJ":   { pairs: '44', suitedA: 'A2', offsuitA: 'AJ', suitedK: 'K9', extras: ['Q9s', 'J9s', 'T9s', '98s', 'KQo'] },
-    "HJ":   { pairs: '22', suitedA: 'A2', offsuitA: 'AT', suitedK: 'K8', extras: ['Q9s', 'J9s', 'T9s', '98s', '87s', 'KQo', 'KJo'] },
-    "CO":   { pairs: '22', suitedA: 'A2', offsuitA: 'AT', suitedK: 'K5', extras: ['Q8s', 'J8s', 'T8s', '97s', '87s', '76s', 'KTo', 'QJo'] },
-    "BTN":  { pairs: '22', suitedA: 'A2', offsuitA: 'A2', suitedK: 'K2', extras: ['Q5s', 'J7s', 'T7s', '97s', '86s', '76s', '65s', '54s', 'K9o', 'Q9o', 'J9o', 'T9o'] },
-    "SB":   { pairs: '22', suitedA: 'A2', offsuitA: 'A2', suitedK: 'K2', extras: ['Q2s', 'J4s', 'T6s', '96s', '85s', '75s', '64s', '53s', '43s', 'K5o', 'Q8o', 'J8o', 'T8o', '98o'] }
-};
-
-// 2. APP-TILSTAND
-let gameState = {
-    currentPosIdx: 0,
-    hand: [],
-    handString: "", // F.eks "AJs" eller "77"
-    isSuited: false
-};
-
-// 3. HJELPEFUNKSJONER
-function getCardValue(v) {
-    return VALUES.indexOf(v) + 2;
+:root {
+    --poker-green: radial-gradient(circle, #2e7d32 0%, #1b5e20 100%);
+    --table-border: #3e2723;
+    --gold: #ffc107;
+    --bg-dark: #121212;
+    --panel-bg: #1e1e1e;
+    --raise-color: #d32f2f;
+    --fold-color: #333333;
+    --call-color: #1976d2;
 }
 
-/**
- * Kjernen i logikken: Sjekker om en hånd er i RFI-range for gitt posisjon.
- */
-function isHandInRfiRange(handStr, pos) {
-    // REGEL: AKs er alltid en raise (fra alle posisjoner)
-    if (handStr === "AKs" || handStr === "AA" || handStr === "KK" || handStr === "QQ") return true;
-
-    const range = GTO_RANGES[pos];
-    const val1 = handStr[0];
-    const val2 = handStr[1];
-    const type = handStr.endsWith('s') ? 'suited' : (handStr.endsWith('o') ? 'offsuit' : 'pair');
-
-    const v1 = getCardValue(val1);
-    const v2 = getCardValue(val2);
-    const high = Math.max(v1, v2);
-    const low = Math.min(v1, v2);
-
-    // Sjekk Par
-    if (type === 'pair') {
-        return high >= getCardValue(range.pairs[0]);
-    }
-
-    // Sjekk Ess (Suited/Offsuit)
-    if (high === 14) {
-        const minLow = (type === 'suited') ? getCardValue(range.suitedA[1]) : getCardValue(range.offsuitA[1]);
-        if (low >= minLow) return true;
-    }
-
-    // Sjekk Konger (Suited)
-    if (high === 13 && type === 'suited') {
-        if (low >= getCardValue(range.suitedK[1])) return true;
-    }
-
-    // Sjekk Extras (Suited connectors, gappers og spesifikke offsuit hender)
-    // Denne fanger opp ting som "T9s", "KQo" etc.
-    return range.extras.some(extra => {
-        const eVal1 = getCardValue(extra[0]);
-        const eVal2 = getCardValue(extra[1]);
-        const eType = extra.endsWith('s') ? 'suited' : 'offsuit';
-        
-        if (type === eType && high === eVal1 && low >= eVal2) return true;
-        return false;
-    });
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
 }
 
-// 4. GAMEPLAY LOGIKK
-function dealNewHand() {
-    // 1. Roter posisjon (tilfeldig eller sekvensielt)
-    gameState.currentPosIdx = Math.floor(Math.random() * POSITIONS.length);
-    const pos = POSITIONS[gameState.currentPosIdx];
-
-    // 2. Generer to unike kort
-    let card1Idx = Math.floor(Math.random() * 13);
-    let suit1Idx = Math.floor(Math.random() * 4);
-    let card2Idx = Math.floor(Math.random() * 13);
-    let suit2Idx = Math.floor(Math.random() * 4);
-
-    // Sikre at vi ikke får to identiske kort (f.eks. Spar Ess to ganger)
-    while (card1Idx === card2Idx && suit1Idx === suit2Idx) {
-        card2Idx = Math.floor(Math.random() * 13);
-        suit2Idx = Math.floor(Math.random() * 4);
-    }
-
-    const c1 = { v: VALUES[card1Idx], s: SUITS[suit1Idx] };
-    const c2 = { v: VALUES[card2Idx], s: SUITS[suit2Idx] };
-    gameState.hand = [c1, c2];
-    gameState.isSuited = c1.s.name === c2.s.name;
-
-    // 3. Lag handString (f.eks "KQs", "A2o", "JJ")
-    const v1 = getCardValue(c1.v);
-    const v2 = getCardValue(c2.v);
-    
-    if (v1 === v2) {
-        gameState.handString = c1.v + c2.v;
-    } else {
-        const higher = v1 > v2 ? c1.v : c2.v;
-        const lower = v1 > v2 ? c2.v : c1.v;
-        gameState.handString = higher + lower + (gameState.isSuited ? "s" : "o");
-    }
-
-    updateUI();
+body {
+    background-color: var(--bg-dark);
+    color: white;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    display: flex;
+    justify-content: center;
+    min-height: 100vh;
 }
 
-// 5. UI OPPDATERING
-function updateUI() {
-    const pos = POSITIONS[gameState.currentPosIdx];
-    
-    // Oppdater tekst
-    document.getElementById('current-pos-display').textContent = pos;
-    
-    // Oppdater bordet (visuelt sete)
-    document.querySelectorAll('.seat').forEach(s => s.classList.remove('active-hero'));
-    const seatId = "seat-" + pos.toLowerCase();
-    const seatElem = document.getElementById(seatId);
-    if (seatElem) seatElem.classList.add('active-hero');
-
-    // Vis kortene
-    const cardContainer = document.getElementById('hole-cards');
-    cardContainer.innerHTML = '';
-    gameState.hand.forEach(card => {
-        const cardDiv = document.createElement('div');
-        cardDiv.className = `card ${card.s.color}`;
-        cardDiv.innerHTML = `<div>${card.v}</div><div style="font-size: 0.8em">${card.s.symbol}</div>`;
-        cardContainer.appendChild(cardDiv);
-    });
-
-    // Skjul feedback
-    document.getElementById('feedback-panel').classList.add('hidden');
+#app-container {
+    width: 100%;
+    max-width: 900px;
+    display: flex;
+    flex-direction: column;
+    padding: 15px;
 }
 
-function checkAction(userAction) {
-    const pos = POSITIONS[gameState.currentPosIdx];
-    const shouldRaise = isHandInRfiRange(gameState.handString, pos);
-    
-    let result = "";
-    let explanation = "";
-    let statusClass = "";
-
-    if (userAction === 'LIMP') {
-        result = "FEIL!";
-        statusClass = "wrong";
-        explanation = "I GTO skal du aldri limpe (med mindre det er spesielle SB-strategier). Raise eller fold.";
-    } else if (userAction === 'RAISE') {
-        if (shouldRaise) {
-            result = "RIKTIG!";
-            statusClass = "correct";
-            explanation = `${gameState.handString} er en standard åpning fra ${pos}.`;
-        } else {
-            result = "FOR AGGRESSIVT!";
-            statusClass = "marginal";
-            explanation = `${gameState.handString} er for svakt til å åpne fra ${pos}.`;
-        }
-    } else if (userAction === 'FOLD') {
-        if (!shouldRaise) {
-            result = "RIKTIG!";
-            statusClass = "correct";
-            explanation = `Bra kast. ${gameState.handString} spiller dårlig fra ${pos}.`;
-        } else {
-            result = "FOR TIGHT!";
-            statusClass = "wrong";
-            explanation = `Her må du høyne! ${gameState.handString} er for god til å kastes her.`;
-        }
-    }
-
-    displayFeedback(result, explanation, statusClass);
+/* === HEADER === */
+header {
+    text-align: center;
+    margin-bottom: 20px;
 }
 
-function displayFeedback(title, text, status) {
-    const panel = document.getElementById('feedback-panel');
-    panel.className = `feedback-panel ${status}`;
-    document.getElementById('feedback-title').textContent = title;
-    document.getElementById('feedback-text').textContent = text;
-    panel.classList.remove('hidden');
+header h1 {
+    font-size: 1.5rem;
+    color: var(--gold);
+    margin-bottom: 10px;
 }
 
-// 6. EVENT LISTENERS
-document.addEventListener('DOMContentLoaded', () => {
-    document.getElementById('btn-fold').onclick = () => checkAction('FOLD');
-    document.getElementById('btn-call').onclick = () => checkAction('LIMP');
-    document.getElementById('btn-raise').onclick = () => checkAction('RAISE');
-    document.getElementById('btn-next').onclick = dealNewHand;
+.secondary-btn {
+    background: #444;
+    color: white;
+    border: 1px solid #666;
+    padding: 8px 16px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: background 0.2s;
+}
 
-    // Start spillet
-    dealNewHand();
-});
+.secondary-btn:hover { background: #555; }
+
+/* === POKERBORDET === */
+#game-area {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 10;
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+#poker-table {
+    width: 85%;
+    height: 75%;
+    background: var(--poker-green);
+    border: 12px solid var(--table-border);
+    border-radius: 200px;
+    position: absolute;
+    box-shadow: 0 15px 40px rgba(0,0,0,0.8), inset 0 0 40px rgba(0,0,0,0.5);
+}
+
+/* Seteplassering (9 plasser - Clockwise) */
+.seat {
+    position: absolute;
+    width: clamp(45px, 10vw, 60px);
+    height: clamp(45px, 10vw, 60px);
+    background: #212121;
+    border: 2px solid #555;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: clamp(0.6rem, 2vw, 0.8rem);
+    font-weight: bold;
+    z-index: 10;
+    transition: all 0.3s ease;
+}
+
+#seat-bb   { top: 25%; left: 5%; }
+#seat-utg  { top: 8%; left: 25%; }
+#seat-utg1 { top: 3%; left: 50%; transform: translateX(-50%); }
+#seat-utg2 { top: 8%; right: 25%; }
+#seat-lj   { top: 35%; right: 3%; }
+#seat-hj   { bottom: 20%; right: 15%; }
+#seat-co   { bottom: 5%; left: 50%; transform: translateX(-50%); }
+#seat-btn  { bottom: 20%; left: 15%; }
+#seat-sb   { top: 60%; left: 3%; }
+
+.seat.active-hero {
+    border-color: var(--gold);
+    box-shadow: 0 0 20px var(--gold);
+    background: #333;
+    transform: scale(1.15);
+}
+
+/* Kort og Senter-info */
+#center-info {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    z-index: 5;
+}
+
+#current-pos-display {
+    color: var(--gold);
+    font-weight: bold;
+    font-size: 1.2rem;
+    margin-bottom: 10px;
+    letter-spacing: 1px;
+}
+
+#hole-cards {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+}
+
+.card {
+    width: clamp(55px, 12vw, 75px);
+    aspect-ratio: 2.5 / 3.5;
+    background: white;
+    border-radius: 6px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    font-size: clamp(1.2rem, 4vw, 1.8rem);
+    font-weight: bold;
+    box-shadow: 2px 5px 10px rgba(0,0,0,0.6);
+}
+
+.card.red { color: var(--raise-color); }
+.card.black { color: #111; }
+
+/* === KONTROLLER & INTEGRERT FEEDBACK === */
+#controls {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.action-btn {
+    padding: 15px 5px;
+    border: none;
+    border-radius: 8px;
+    font-weight: bold;
+    font-size: clamp(0.8rem, 3vw, 1rem);
+    cursor: pointer;
+    color: white;
+    transition: transform 0.1s, opacity 0.2s;
+}
+
+.action-btn:active { transform: scale(0.95); }
+.action-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.fold-btn { background: #555; }
+.call-btn { background: var(--call-color); }
+.raise-btn { background: #e64a19; }
+
+#feedback-section {
+    background: var(--panel-bg);
+    border-radius: 10px;
+    padding: 20px;
+    text-align: center;
+    border-top: 4px solid transparent;
+    animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+#feedback-section.correct { border-top-color: #4caf50; }
+#feedback-section.wrong { border-top-color: #f44336; }
+#feedback-section.marginal { border-top-color: #ff9800; }
+
+#feedback-title { margin-bottom: 10px; font-size: 1.2rem; }
+#feedback-text { margin-bottom: 20px; line-height: 1.4; color: #ddd; }
+
+.next-btn {
+    width: 100%;
+    padding: 15px;
+    background: white;
+    color: black;
+    font-weight: bold;
+    font-size: 1rem;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+/* === RANGE MATRISE MODAL (13x13 Grid) === */
+#range-modal {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.85);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    padding: 15px;
+}
+
+.modal-content {
+    background: var(--panel-bg);
+    width: 100%;
+    max-width: 550px;
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.9);
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    border-bottom: 1px solid #444;
+    padding-bottom: 10px;
+}
+
+#close-modal {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 2rem;
+    cursor: pointer;
+    line-height: 1;
+}
+
+/* Selve rutenettet */
+#matrix-container {
+    display: grid;
+    grid-template-columns: repeat(13, 1fr);
+    gap: 2px;
+    width: 100%;
+    aspect-ratio: 1;
+    margin-bottom: 15px;
+}
+
+.matrix-cell {
+    background: var(--fold-color);
+    color: #888;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: clamp(0.5rem, 1.5vw, 0.75rem);
+    font-weight: bold;
+    border-radius: 2px;
+    user-select: none;
+}
+
+.matrix-cell.raise { background: var(--raise-color); color: white; }
+.matrix-cell.limp { background: var(--call-color); color: white; } /* For SB/BB logikk senere */
+
+.legend {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    font-size: 0.9rem;
+}
+
+.legend-item { display: flex; align-items: center; gap: 5px; }
+.color-box { width: 15px; height: 15px; border-radius: 3px; }
+.raise-color { background: var(--raise-color); }
+.fold-color { background: var(--fold-color); border: 1px solid #555; }
+
+.hidden { display: none !important; }
+
+/* Version: #8 */
