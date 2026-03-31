@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Preflop RFI Trener - Turneringspoker</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="app-container">
+        <header>
+            <h1>Turneringspoker: RFI Trener</h1>
+            <p>Lær hvilke hender du bør åpne med (Raise First In) med 40 Big Blinds (BB) stack.</p>
+        </header>
+
+        <main>
+            <div id="poker-table-area">
+                <div id="poker-table">
+                    <div class="seat" id="seat-utg"><span class="pos-label">UTG</span></div>
+                    <div class="seat" id="seat-utg1"><span class="pos-label">UTG+1</span></div>
+                    <div class="seat" id="seat-utg2"><span class="pos-label">UTG+2</span></div>
+                    <div class="seat" id="seat-lj"><span class="pos-label">LJ</span></div>
+                    <div class="seat" id="seat-hj"><span class="pos-label">HJ</span></div>
+                    <div class="seat" id="seat-co"><span class="pos-label">CO</span></div>
+                    <div class="seat" id="seat-btn"><span class="pos-label">BTN</span></div>
+                    <div class="seat" id="seat-sb"><span class="pos-label">SB</span></div>
+                    <div class="seat" id="seat-bb"><span class="pos-label">BB</span></div>
+
+                    <div id="table-center">
+                        <div id="hole-cards">
+                            <div class="card placeholder">?</div>
+                            <div class="card placeholder">?</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="control-panel">
+                <div id="scenario-info">
+                    <h2>Din tur!</h2>
+                    <p>Posisjon: <strong id="current-position">-</strong></p>
+                    <p>Hånd: <strong id="current-hand">-</strong></p>
+                    <p>Stack: <strong>40 BB</strong></p>
+                    <p>Situasjon: Alle har kastet frem til deg (Unopened pot).</p>
+                </div>
+
+                <div id="action-buttons">
+                    <button id="btn-fold" class="action-btn">Fold</button>
+                    <button id="btn-call" class="action-btn">Call (Limp)</button>
+                    <button id="btn-raise" class="action-btn">Raise</button>
+                </div>
+
+                <div id="feedback-panel" class="hidden">
+                    <h3 id="feedback-title">Resultat</h3>
+                    <p id="feedback-text">Her kommer forklaringen.</p>
+                    <button id="btn-next-hand">Neste Hånd</button>
+                </div>
+            </div>
+        </main>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
