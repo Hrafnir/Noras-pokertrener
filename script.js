@@ -1,192 +1,208 @@
-/* Version: #3 */
+/**
+ * VERSION #6 - COMPLETE PROFESSIONAL GTO TRAINER ENGINE
+ * Optimalisert for 40BB MTT RFI (Raise First In)
+ */
 
-// === DATAKONFIGURASJON ===
-const POSITIONS = ["UTG", "UTG+1", "UTG+2", "LJ", "HJ", "CO", "BTN", "SB", "BB"];
+// 1. KONFIGURASJON OG DATAGRUNNLAG
+const POSITIONS = ["UTG", "UTG1", "UTG2", "LJ", "HJ", "CO", "BTN", "SB"];
+const VALUES = ['2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K', 'A'];
 const SUITS = [
     { name: 'spades', symbol: '♠', color: 'black' },
     { name: 'hearts', symbol: '♥', color: 'red' },
     { name: 'diamonds', symbol: '♦', color: 'red' },
     { name: 'clubs', symbol: '♣', color: 'black' }
 ];
-const VALUES = ['2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K', 'A'];
 
-// Forenklet RFI-tabell (Raise First In) for 40BB
-// Basert på standard MTT GTO-ranges
-const RFI_RANGES = {
-    "UTG":   ["22+", "AJs+", "KQs", "AQo+"], 
-    "UTG+1": ["22+", "ATs+", "KJs+", "AQo+"],
-    "UTG+2": ["22+", "ATs+", "KJs+", "QJs", "AJo+"],
-    "LJ":    ["22+", "A8s+", "KJs+", "QJs", "JTs", "AJo+", "KQo"],
-    "HJ":    ["22+", "A5s+", "KTs+", "QTs+", "JTs", "T9s", "ATo+", "KQo"],
-    "CO":    ["22+", "A2s+", "K8s+", "Q9s+", "J9s+", "T9s", "98s", "87s", "ATo+", "KTo+", "QJo"],
-    "BTN":   ["22+", "A2s+", "K2s+", "Q5s+", "J7s+", "T7s+", "97s+", "86s+", "76s", "65s", "54s", "A2o+", "K9o+", "Q9o+", "J9o+", "T9o"],
-    "SB":    ["22+", "A2s+", "K2s+", "Q2s+", "J4s+", "T6s+", "96s+", "85s+", "75s+", "64s+", "53s+", "A2o+", "K5o+", "Q8o+", "J8o+", "T8o+", "98o"]
+/**
+ * GTO RANGES (40BB Perimeters)
+ * Formatet definerer minimumskravene for hver kategori per posisjon.
+ */
+const GTO_RANGES = {
+    "UTG":  { pairs: '77', suitedA: 'AT', offsuitA: 'AK', suitedK: 'KQ', extras: ['QJs', 'JTs'] },
+    "UTG1": { pairs: '66', suitedA: 'A9', offsuitA: 'AQ', suitedK: 'KJ', extras: ['QJs', 'JTs'] },
+    "UTG2": { pairs: '55', suitedA: 'A8', offsuitA: 'AJ', suitedK: 'KT', extras: ['QJs', 'JTs', 'T9s'] },
+    "LJ":   { pairs: '44', suitedA: 'A2', offsuitA: 'AJ', suitedK: 'K9', extras: ['Q9s', 'J9s', 'T9s', '98s', 'KQo'] },
+    "HJ":   { pairs: '22', suitedA: 'A2', offsuitA: 'AT', suitedK: 'K8', extras: ['Q9s', 'J9s', 'T9s', '98s', '87s', 'KQo', 'KJo'] },
+    "CO":   { pairs: '22', suitedA: 'A2', offsuitA: 'AT', suitedK: 'K5', extras: ['Q8s', 'J8s', 'T8s', '97s', '87s', '76s', 'KTo', 'QJo'] },
+    "BTN":  { pairs: '22', suitedA: 'A2', offsuitA: 'A2', suitedK: 'K2', extras: ['Q5s', 'J7s', 'T7s', '97s', '86s', '76s', '65s', '54s', 'K9o', 'Q9o', 'J9o', 'T9o'] },
+    "SB":   { pairs: '22', suitedA: 'A2', offsuitA: 'A2', suitedK: 'K2', extras: ['Q2s', 'J4s', 'T6s', '96s', '85s', '75s', '64s', '53s', '43s', 'K5o', 'Q8o', 'J8o', 'T8o', '98o'] }
 };
 
-// === APP TILSTAND ===
-let state = {
-    currentPositionIndex: 0, // Starter på UTG
-    currentHand: [],
-    isSuited: false,
-    handString: "", // f.eks "AKs" eller "75o"
-    evaluation: ""
+// 2. APP-TILSTAND
+let gameState = {
+    currentPosIdx: 0,
+    hand: [],
+    handString: "", // F.eks "AJs" eller "77"
+    isSuited: false
 };
 
-// === HJELPEFUNKSJONER ===
-function log(msg) {
-    console.log(`[POKER-LOG] ${msg}`);
+// 3. HJELPEFUNKSJONER
+function getCardValue(v) {
+    return VALUES.indexOf(v) + 2;
 }
 
-function getRandomCard() {
-    const value = VALUES[Math.floor(Math.random() * VALUES.length)];
-    const suit = SUITS[Math.floor(Math.random() * SUITS.length)];
-    return { value, suit };
-}
+/**
+ * Kjernen i logikken: Sjekker om en hånd er i RFI-range for gitt posisjon.
+ */
+function isHandInRfiRange(handStr, pos) {
+    // REGEL: AKs er alltid en raise (fra alle posisjoner)
+    if (handStr === "AKs" || handStr === "AA" || handStr === "KK" || handStr === "QQ") return true;
 
-function getHandRankValue(val) {
-    if (val === 'T') return 10;
-    if (val === 'J') return 11;
-    if (val === 'Q') return 12;
-    if (val === 'K') return 13;
-    if (val === 'A') return 14;
-    return parseInt(val);
-}
+    const range = GTO_RANGES[pos];
+    const val1 = handStr[0];
+    const val2 = handStr[1];
+    const type = handStr.endsWith('s') ? 'suited' : (handStr.endsWith('o') ? 'offsuit' : 'pair');
 
-// === KJERNEFUNKSJONALITET ===
+    const v1 = getCardValue(val1);
+    const v2 = getCardValue(val2);
+    const high = Math.max(v1, v2);
+    const low = Math.min(v1, v2);
 
-function dealNewHand() {
-    log("Deler ut ny hånd...");
-    
-    // 1. Trekk to unike kort
-    let card1 = getRandomCard();
-    let card2 = getRandomCard();
-    while (card1.value === card2.value && card1.suit.name === card2.suit.name) {
-        card2 = getRandomCard();
+    // Sjekk Par
+    if (type === 'pair') {
+        return high >= getCardValue(range.pairs[0]);
     }
-    
-    state.currentHand = [card1, card2];
-    state.isSuited = card1.suit.name === card2.suit.name;
-    
-    // 2. Formater hånd-streng (høyeste kort først)
-    const v1 = getHandRankValue(card1.value);
-    const v2 = getHandRankValue(card2.value);
+
+    // Sjekk Ess (Suited/Offsuit)
+    if (high === 14) {
+        const minLow = (type === 'suited') ? getCardValue(range.suitedA[1]) : getCardValue(range.offsuitA[1]);
+        if (low >= minLow) return true;
+    }
+
+    // Sjekk Konger (Suited)
+    if (high === 13 && type === 'suited') {
+        if (low >= getCardValue(range.suitedK[1])) return true;
+    }
+
+    // Sjekk Extras (Suited connectors, gappers og spesifikke offsuit hender)
+    // Denne fanger opp ting som "T9s", "KQo" etc.
+    return range.extras.some(extra => {
+        const eVal1 = getCardValue(extra[0]);
+        const eVal2 = getCardValue(extra[1]);
+        const eType = extra.endsWith('s') ? 'suited' : 'offsuit';
+        
+        if (type === eType && high === eVal1 && low >= eVal2) return true;
+        return false;
+    });
+}
+
+// 4. GAMEPLAY LOGIKK
+function dealNewHand() {
+    // 1. Roter posisjon (tilfeldig eller sekvensielt)
+    gameState.currentPosIdx = Math.floor(Math.random() * POSITIONS.length);
+    const pos = POSITIONS[gameState.currentPosIdx];
+
+    // 2. Generer to unike kort
+    let card1Idx = Math.floor(Math.random() * 13);
+    let suit1Idx = Math.floor(Math.random() * 4);
+    let card2Idx = Math.floor(Math.random() * 13);
+    let suit2Idx = Math.floor(Math.random() * 4);
+
+    // Sikre at vi ikke får to identiske kort (f.eks. Spar Ess to ganger)
+    while (card1Idx === card2Idx && suit1Idx === suit2Idx) {
+        card2Idx = Math.floor(Math.random() * 13);
+        suit2Idx = Math.floor(Math.random() * 4);
+    }
+
+    const c1 = { v: VALUES[card1Idx], s: SUITS[suit1Idx] };
+    const c2 = { v: VALUES[card2Idx], s: SUITS[suit2Idx] };
+    gameState.hand = [c1, c2];
+    gameState.isSuited = c1.s.name === c2.s.name;
+
+    // 3. Lag handString (f.eks "KQs", "A2o", "JJ")
+    const v1 = getCardValue(c1.v);
+    const v2 = getCardValue(c2.v);
     
     if (v1 === v2) {
-        state.handString = card1.value + card1.value + "+"; // Par
+        gameState.handString = c1.v + c2.v;
     } else {
-        const high = v1 > v2 ? card1.value : card2.value;
-        const low = v1 > v2 ? card2.value : card1.value;
-        state.handString = high + low + (state.isSuited ? "s" : "o");
+        const higher = v1 > v2 ? c1.v : c2.v;
+        const lower = v1 > v2 ? c2.v : c1.v;
+        gameState.handString = higher + lower + (gameState.isSuited ? "s" : "o");
     }
 
-    // 3. Roter posisjon (Hopp over BB da man ikke kan RFI derfra)
-    state.currentPositionIndex = (state.currentPositionIndex + 1) % 8; 
-    
     updateUI();
-    hideFeedback();
 }
 
+// 5. UI OPPDATERING
 function updateUI() {
-    const pos = POSITIONS[state.currentPositionIndex];
-    document.getElementById('current-position').textContent = pos;
-    document.getElementById('current-hand').textContent = state.handString.replace('+', '');
+    const pos = POSITIONS[gameState.currentPosIdx];
     
-    // Oppdater visuelle kort
+    // Oppdater tekst
+    document.getElementById('current-pos-display').textContent = pos;
+    
+    // Oppdater bordet (visuelt sete)
+    document.querySelectorAll('.seat').forEach(s => s.classList.remove('active-hero'));
+    const seatId = "seat-" + pos.toLowerCase();
+    const seatElem = document.getElementById(seatId);
+    if (seatElem) seatElem.classList.add('active-hero');
+
+    // Vis kortene
     const cardContainer = document.getElementById('hole-cards');
     cardContainer.innerHTML = '';
-    
-    state.currentHand.forEach(card => {
+    gameState.hand.forEach(card => {
         const cardDiv = document.createElement('div');
-        cardDiv.className = `card ${card.suit.color}`;
-        cardDiv.innerHTML = `${card.value}<br>${card.suit.symbol}`;
+        cardDiv.className = `card ${card.s.color}`;
+        cardDiv.innerHTML = `<div>${card.v}</div><div style="font-size: 0.8em">${card.s.symbol}</div>`;
         cardContainer.appendChild(cardDiv);
     });
 
-    // Marker aktivt sete på bordet
-    document.querySelectorAll('.seat').forEach(s => s.classList.remove('active-hero'));
-    const seatId = `seat-${pos.toLowerCase().replace('+', '')}`;
-    const activeSeat = document.getElementById(seatId);
-    if (activeSeat) activeSeat.classList.add('active-hero');
-
-    log(`Situasjon: ${pos} med ${state.handString}`);
+    // Skjul feedback
+    document.getElementById('feedback-panel').classList.add('hidden');
 }
 
-function checkAction(action) {
-    const pos = POSITIONS[state.currentPositionIndex];
-    const range = RFI_RANGES[pos] || [];
+function checkAction(userAction) {
+    const pos = POSITIONS[gameState.currentPosIdx];
+    const shouldRaise = isHandInRfiRange(gameState.handString, pos);
     
-    // Enkel sjekk: Er handString i range-listen? 
-    // (Merk: I en full versjon ville vi sjekket mot matriser, her bruker vi forenklet logikk)
-    const shouldRaise = range.some(hand => {
-        if (hand.endsWith('+')) {
-            // Håndterer par-logikk (f.eks 22+)
-            if (state.handString.includes('+')) {
-                return getHandRankValue(state.handString[0]) >= getHandRankValue(hand[0]);
-            }
-            return false;
-        }
-        return hand === state.handString;
-    });
-
     let result = "";
-    let statusClass = "";
     let explanation = "";
+    let statusClass = "";
 
-    if (action === 'LIMP') {
+    if (userAction === 'LIMP') {
         result = "FEIL!";
         statusClass = "wrong";
-        explanation = "Du bør ALDRI limpe (bare syne) når du er den første som går inn i potten. Enten høyner du for å ta kontroll, eller så kaster du. Limping gir motspillerne dine en billig sjanse til å se floppen.";
-    } else if (action === 'RAISE') {
+        explanation = "I GTO skal du aldri limpe (med mindre det er spesielle SB-strategier). Raise eller fold.";
+    } else if (userAction === 'RAISE') {
         if (shouldRaise) {
             result = "RIKTIG!";
             statusClass = "correct";
-            explanation = `Solid spill! ${state.handString} er en sterk nok hånd til å åpne med fra ${pos}. Du bygger pott og legger press på spillerne bak deg.`;
+            explanation = `${gameState.handString} er en standard åpning fra ${pos}.`;
         } else {
-            result = "MARGINALT / FEIL";
+            result = "FOR AGGRESSIVT!";
             statusClass = "marginal";
-            explanation = `Dette er litt for aggressivt. Fra ${pos} bør du kaste ${state.handString}. Husk at det sitter mange spillere bak deg som kan ha en bedre hånd.`;
+            explanation = `${gameState.handString} er for svakt til å åpne fra ${pos}.`;
         }
-    } else if (action === 'FOLD') {
+    } else if (userAction === 'FOLD') {
         if (!shouldRaise) {
             result = "RIKTIG!";
             statusClass = "correct";
-            explanation = `God kast! ${state.handString} er for svakt til å åpne fra ${pos}. Det er viktig å være disiplinert i tidlige og midtre posisjoner.`;
+            explanation = `Bra kast. ${gameState.handString} spiller dårlig fra ${pos}.`;
         } else {
-            result = "FEIL!";
+            result = "FOR TIGHT!";
             statusClass = "wrong";
-            explanation = `Her kaster du en vinnerhånd! ${state.handString} er mer enn sterk nok til å åpne med fra ${pos}. Ikke vær redd for å spille dine gode hender.`;
+            explanation = `Her må du høyne! ${gameState.handString} er for god til å kastes her.`;
         }
     }
 
-    showFeedback(result, explanation, statusClass);
+    displayFeedback(result, explanation, statusClass);
 }
 
-function showFeedback(title, text, statusClass) {
+function displayFeedback(title, text, status) {
     const panel = document.getElementById('feedback-panel');
-    panel.className = `feedback-panel ${statusClass}`;
+    panel.className = `feedback-panel ${status}`;
     document.getElementById('feedback-title').textContent = title;
     document.getElementById('feedback-text').textContent = text;
     panel.classList.remove('hidden');
-    
-    // Deaktiver knapper midlertidig
-    document.querySelectorAll('.action-btn').forEach(b => b.disabled = true);
 }
 
-function hideFeedback() {
-    document.getElementById('feedback-panel').classList.add('hidden');
-    document.querySelectorAll('.action-btn').forEach(b => b.disabled = false);
-}
+// 6. EVENT LISTENERS
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('btn-fold').onclick = () => checkAction('FOLD');
+    document.getElementById('btn-call').onclick = () => checkAction('LIMP');
+    document.getElementById('btn-raise').onclick = () => checkAction('RAISE');
+    document.getElementById('btn-next').onclick = dealNewHand;
 
-// === EVENT LISTENERS ===
-document.getElementById('btn-fold').addEventListener('click', () => checkAction('FOLD'));
-document.getElementById('btn-call').addEventListener('click', () => checkAction('LIMP'));
-document.getElementById('btn-raise').addEventListener('click', () => checkAction('RAISE'));
-document.getElementById('btn-next-hand').addEventListener('click', dealNewHand);
-
-// Start spillet
-window.onload = () => {
-    log("Applikasjon startet.");
+    // Start spillet
     dealNewHand();
-};
-
-/* Version: #3 */
+});
