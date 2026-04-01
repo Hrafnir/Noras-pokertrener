@@ -1,4 +1,4 @@
-/* Version: #24 - Turneringssimulator Engine (Ekte Håndevaluator & Post-Flop AI) */
+/* Version: #26 - Turneringssimulator Engine (Walk-Logikk & Range-Oppslag) */
 
 const SIM_STATE = {
     players: [],
@@ -50,7 +50,7 @@ function initSimulator() {
     SIM_STATE.communityCards = [];
     document.getElementById('sim-log-content').innerHTML = '';
     
-    const startStack = 800; 
+    const startStack = 800; // Standard 40BB for simulatoren foreløpig
     
     SIM_STATE.players.push({
         id: 1, name: 'Hero (Deg)', isHero: true, stack: startStack, status: 'active', cards: [], bet: 0, hasActed: false
@@ -140,7 +140,6 @@ function postBlinds() {
 
     SIM_STATE.currentBet = SIM_STATE.blinds.bb;
     SIM_STATE.currentTurnIdx = getNextActivePlayer(bbIdx); 
-    // Blinds har "betalt", men har ikke "handlet" aktivt ennå (hasActed = false)
 }
 
 function getNextActivePlayer(currentIdx) {
@@ -149,20 +148,47 @@ function getNextActivePlayer(currentIdx) {
     return idx;
 }
 
-// === 4. SPILL-LOOP OG GTO-AI ===
+// Hjelpefunksjon for å finne posisjons-navnet (UTG, BTN, etc.)
+function getPlayerPosition(playerIdx) {
+    const tableSize = SIM_STATE.players.filter(p => p.status !== 'out').length;
+    const activePlayers = [];
+    let idx = SIM_STATE.dealerIdx;
+    for(let i=0; i<SIM_STATE.players.length; i++) {
+        idx = (idx + 1) % SIM_STATE.players.length;
+        if(SIM_STATE.players[idx].status !== 'out') activePlayers.push(idx);
+    }
+    
+    // getActivePositions hentes fra script.js som ligger i samme miljø
+    if (typeof getActivePositions === 'function') {
+        const posNames = getActivePositions(tableSize);
+        let posIndex = activePlayers.indexOf(playerIdx);
+        return posNames[posIndex] || "HJ";
+    }
+    return "HJ";
+}
+
+// === 4. SPILL-LOOP OG WALK-LOGIKK ===
 
 function processTurn() {
     updateSimUI();
     let activeInHand = SIM_STATE.players.filter(p => p.status === 'active');
 
+    // Sjekk om kun 1 spiller er igjen (Alle andre har kastet)
     if (activeInHand.length === 1) {
-        awardPot(activeInHand[0]);
+        let winner = activeInHand[0];
+        
+        // WALK-LOGIKK: Er det preflop, ingen har høynet over Big Blind, og vinneren sitter i BB?
+        if (SIM_STATE.phase === 'preflop' && SIM_STATE.currentBet === SIM_STATE.blinds.bb && winner.bet === SIM_STATE.blinds.bb) {
+            simLog(`🚶‍♂️ Alle kastet. <strong>${winner.name} får en Walk</strong> og vinner potten!`, 'alert');
+        } else {
+            simLog(`🏆 Alle andre kastet. <strong>${winner.name}</strong> vinner potten!`, 'hero');
+        }
+        
+        awardPot(winner);
         return;
     }
 
-    // NY LOGIKK: Bettingrunden er ferdig NÅR alle har betalt like mye, OG alle har hatt muligheten til å handle.
     let allMatched = activeInHand.every(p => (p.hasActed && p.bet === SIM_STATE.currentBet) || p.stack === 0);
-    
     if (allMatched && activeInHand.length > 0) {
         nextPhase();
         return;
@@ -170,7 +196,7 @@ function processTurn() {
 
     let currentPlayer = SIM_STATE.players[SIM_STATE.currentTurnIdx];
     
-    if (currentPlayer.stack === 0 || currentPlayer.hasActed && currentPlayer.bet === SIM_STATE.currentBet) {
+    if (currentPlayer.stack === 0 || (currentPlayer.hasActed && currentPlayer.bet === SIM_STATE.currentBet)) {
         SIM_STATE.currentTurnIdx = getNextActivePlayer(SIM_STATE.currentTurnIdx);
         setTimeout(processTurn, 100);
         return;
@@ -183,20 +209,6 @@ function processTurn() {
         document.getElementById('sim-controls').classList.add('hidden');
         setTimeout(() => executeAITurn(currentPlayer), 1000); 
     }
-}
-
-function getAIPosition(playerIdx) {
-    const tableSize = SIM_STATE.players.filter(p => p.status !== 'out').length;
-    const activePlayers = [];
-    let idx = SIM_STATE.dealerIdx;
-    for(let i=0; i<SIM_STATE.players.length; i++) {
-        idx = (idx + 1) % SIM_STATE.players.length;
-        if(SIM_STATE.players[idx].status !== 'out') activePlayers.push(idx);
-    }
-    const posNames = getActivePositions(tableSize);
-    let heroPosIndex = activePlayers.indexOf(playerIdx);
-    let mappedPos = posNames[heroPosIndex] || "HJ";
-    return mappedPos;
 }
 
 function getHandString(cards) {
@@ -213,7 +225,7 @@ function executeAITurn(aiPlayer) {
     let raiseAmount = 0;
 
     if (isPreflop) {
-        let pos = getAIPosition(SIM_STATE.currentTurnIdx);
+        let pos = getPlayerPosition(SIM_STATE.currentTurnIdx);
         let handStr = getHandString(aiPlayer.cards);
         let facingRaise = callAmount > SIM_STATE.blinds.bb - aiPlayer.bet; 
         
@@ -244,19 +256,18 @@ function executeAITurn(aiPlayer) {
             action = 'CALL';
         }
     } else {
-        // SMART POST-FLOP AI
         let handEval = evaluateHand(aiPlayer.cards, SIM_STATE.communityCards);
-        let cat = handEval.category; // 1: High Card, 2: Pair, 3: Two Pair, etc.
+        let cat = handEval.category; 
 
-        if (callAmount === 0) { // Kan velge å bette eller sjekke
+        if (callAmount === 0) { 
             if (cat >= 2) { action = Math.random() < 0.6 ? 'RAISE' : 'CHECK'; } 
             else { action = (aiPlayer.profile === 'Maniac' && Math.random() < 0.4) ? 'RAISE' : 'CHECK'; }
-        } else { // Står overfor et bet
-            if (cat >= 3) { action = Math.random() < 0.4 ? 'RAISE' : 'CALL'; } // To par+
-            else if (cat === 2) { // Ett par
+        } else { 
+            if (cat >= 3) { action = Math.random() < 0.4 ? 'RAISE' : 'CALL'; } 
+            else if (cat === 2) { 
                 if (aiPlayer.profile === 'Nit' && Math.random() > 0.4) action = 'FOLD'; 
                 else action = 'CALL';
-            } else { // High card / Ingenting
+            } else { 
                 if (aiPlayer.profile === 'Station' && Math.random() < 0.25) action = 'CALL'; 
                 else if (aiPlayer.profile === 'Maniac' && Math.random() < 0.15) action = 'RAISE'; 
                 else action = 'FOLD';
@@ -313,7 +324,7 @@ function setupHeroControls(hero) {
 
 function applyAction(player, action, raiseTotal = 0) {
     document.getElementById('sim-controls').classList.add('hidden');
-    player.hasActed = true; // Spilleren har nå handlet
+    player.hasActed = true; 
     
     if (action === 'FOLD') {
         player.status = 'folded';
@@ -333,13 +344,12 @@ function applyAction(player, action, raiseTotal = 0) {
         player.bet += actualAdd;
         SIM_STATE.currentBet = player.bet;
         
-        // Hvis noen høyner, må alle andre handle på nytt!
         SIM_STATE.players.forEach(p => { 
             if (p.id !== player.id && p.status === 'active' && p.stack > 0) p.hasActed = false; 
         });
 
-        if (player.stack === 0) simLog(`${player.name} går ALL-IN med ${player.bet}!`, 'alert');
-        else simLog(`${player.name} høyner til ${player.bet}.`, 'alert');
+        if (player.stack === 0) simLog(`💥 ${player.name} går ALL-IN med ${player.bet}!`, 'alert');
+        else simLog(`🔥 ${player.name} høyner til ${player.bet}.`, 'alert');
     }
 
     SIM_STATE.currentTurnIdx = getNextActivePlayer(SIM_STATE.currentTurnIdx);
@@ -352,7 +362,7 @@ function nextPhase() {
     SIM_STATE.players.forEach(p => { 
         SIM_STATE.pot += p.bet; 
         p.bet = 0; 
-        if (p.status === 'active' && p.stack > 0) p.hasActed = false; // Nullstill handling for neste gate
+        if (p.status === 'active' && p.stack > 0) p.hasActed = false; 
     });
     SIM_STATE.currentBet = 0;
     
@@ -408,7 +418,7 @@ function evaluateHand(holeCards, communityCards) {
 
     function getStraightHigh(cardList) {
         let vals = [...new Set(cardList.map(c => c.val))];
-        if (vals.includes(14)) vals.push(1); // Ess kan brukes som lav
+        if (vals.includes(14)) vals.push(1); 
         for (let i = 0; i <= vals.length - 5; i++) {
             if (vals[i] - vals[i+4] === 4) return vals[i];
         }
@@ -540,7 +550,8 @@ function updateSimUI() {
     document.getElementById('sim-players-left').textContent = SIM_STATE.players.filter(p => p.status !== 'out').length;
 }
 
-// Koble til oppstartsknapper
+// === 8. EVENTS OG KNAPPER ===
+
 document.getElementById('btn-start-sim').addEventListener('click', () => {
     document.getElementById('sim-settings').classList.add('hidden');
     document.getElementById('sim-info').classList.remove('hidden');
@@ -551,4 +562,31 @@ document.getElementById('btn-start-sim').addEventListener('click', () => {
 document.getElementById('sim-btn-next-hand').addEventListener('click', () => {
     document.getElementById('sim-btn-next-hand').classList.add('hidden');
     startNewHand();
+});
+
+// "MINE RANGES"-KNAPPEN
+document.getElementById('sim-btn-show-ranges').addEventListener('click', () => {
+    const tableSize = parseInt(document.getElementById('sim-table-size').value);
+    
+    // Finn Hero sin posisjon (Hero er alltid index 0 i spill-listen)
+    const heroPos = getPlayerPosition(0); 
+    
+    // Still inn Cheat Sheet modalen
+    document.getElementById('cs-stack-selector').value = "40"; // Simulator bruker 40BB pt.
+    document.getElementById('cs-table-selector').value = tableSize.toString();
+    
+    if (typeof populateCheatSheetPositions === 'function') {
+        populateCheatSheetPositions();
+    }
+    
+    document.getElementById('cs-pos-selector').value = heroPos;
+    
+    let facingRaise = SIM_STATE.currentBet > SIM_STATE.blinds.bb;
+    document.getElementById('cs-mode-selector').value = facingRaise ? "FACING_RAISE" : "RFI";
+    
+    if (typeof updateCheatSheetMatrix === 'function') {
+        updateCheatSheetMatrix();
+    }
+    
+    document.getElementById('cheat-sheet-modal').classList.remove('hidden');
 });
