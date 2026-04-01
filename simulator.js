@@ -1,4 +1,4 @@
-/* Version: #26 - Turneringssimulator Engine (Walk-Logikk & Range-Oppslag) */
+/* Version: #27 - Turneringssimulator Engine (Smart Range-Oppslag) */
 
 const SIM_STATE = {
     players: [],
@@ -50,7 +50,7 @@ function initSimulator() {
     SIM_STATE.communityCards = [];
     document.getElementById('sim-log-content').innerHTML = '';
     
-    const startStack = 800; // Standard 40BB for simulatoren foreløpig
+    const startStack = 800; 
     
     SIM_STATE.players.push({
         id: 1, name: 'Hero (Deg)', isHero: true, stack: startStack, status: 'active', cards: [], bet: 0, hasActed: false
@@ -148,19 +148,32 @@ function getNextActivePlayer(currentIdx) {
     return idx;
 }
 
-// Hjelpefunksjon for å finne posisjons-navnet (UTG, BTN, etc.)
+// NY OG KORREKT POSISJONSMÅLER
 function getPlayerPosition(playerIdx) {
-    const tableSize = SIM_STATE.players.filter(p => p.status !== 'out').length;
     const activePlayers = [];
     let idx = SIM_STATE.dealerIdx;
-    for(let i=0; i<SIM_STATE.players.length; i++) {
+    
+    for(let i = 0; i < SIM_STATE.players.length; i++) {
         idx = (idx + 1) % SIM_STATE.players.length;
         if(SIM_STATE.players[idx].status !== 'out') activePlayers.push(idx);
     }
     
-    // getActivePositions hentes fra script.js som ligger i samme miljø
+    let tableSize = activePlayers.length;
+    
     if (typeof getActivePositions === 'function') {
         const posNames = getActivePositions(tableSize);
+        
+        if (tableSize === 2) {
+            return playerIdx === SIM_STATE.dealerIdx ? "BTN" : "BB";
+        }
+        
+        // GTO-posisjoner starter med UTG. Vår array starter nå med SB. Vi flytter SB og BB bakerst.
+        if (activePlayers.length >= 2) {
+            let sb = activePlayers.shift();
+            let bb = activePlayers.shift();
+            activePlayers.push(sb, bb);
+        }
+        
         let posIndex = activePlayers.indexOf(playerIdx);
         return posNames[posIndex] || "HJ";
     }
@@ -173,17 +186,13 @@ function processTurn() {
     updateSimUI();
     let activeInHand = SIM_STATE.players.filter(p => p.status === 'active');
 
-    // Sjekk om kun 1 spiller er igjen (Alle andre har kastet)
     if (activeInHand.length === 1) {
         let winner = activeInHand[0];
-        
-        // WALK-LOGIKK: Er det preflop, ingen har høynet over Big Blind, og vinneren sitter i BB?
         if (SIM_STATE.phase === 'preflop' && SIM_STATE.currentBet === SIM_STATE.blinds.bb && winner.bet === SIM_STATE.blinds.bb) {
             simLog(`🚶‍♂️ Alle kastet. <strong>${winner.name} får en Walk</strong> og vinner potten!`, 'alert');
         } else {
             simLog(`🏆 Alle andre kastet. <strong>${winner.name}</strong> vinner potten!`, 'hero');
         }
-        
         awardPot(winner);
         return;
     }
@@ -400,7 +409,6 @@ function nextPhase() {
     setTimeout(processTurn, 1000);
 }
 
-// 7-KORTS TEXAS HOLD'EM EVALUATOR
 function evaluateHand(holeCards, communityCards) {
     let cards = [...holeCards, ...communityCards].map(c => {
         let val = VALUES.indexOf(c.v);
@@ -564,29 +572,31 @@ document.getElementById('sim-btn-next-hand').addEventListener('click', () => {
     startNewHand();
 });
 
-// "MINE RANGES"-KNAPPEN
+// DEN SMARTE "MINE RANGES"-KNAPPEN
 document.getElementById('sim-btn-show-ranges').addEventListener('click', () => {
-    const tableSize = parseInt(document.getElementById('sim-table-size').value);
+    const activeCount = SIM_STATE.players.filter(p => p.status !== 'out').length;
+    const heroPos = getPlayerPosition(0); // Regner ut Hero sin nøyaktige GTO posisjon
     
-    // Finn Hero sin posisjon (Hero er alltid index 0 i spill-listen)
-    const heroPos = getPlayerPosition(0); 
+    document.getElementById('cs-stack-selector').value = "40"; // Simulator kjører på 40BB
     
-    // Still inn Cheat Sheet modalen
-    document.getElementById('cs-stack-selector').value = "40"; // Simulator bruker 40BB pt.
-    document.getElementById('cs-table-selector').value = tableSize.toString();
+    // Velger nærmeste tabell-størrelse (9, 8, 6, 3, 2)
+    let tSize = 9;
+    if (activeCount <= 2) tSize = 2;
+    else if (activeCount <= 3) tSize = 3;
+    else if (activeCount <= 6) tSize = 6;
+    else if (activeCount <= 8) tSize = 8;
     
-    if (typeof populateCheatSheetPositions === 'function') {
-        populateCheatSheetPositions();
-    }
+    document.getElementById('cs-table-selector').value = tSize.toString();
+    
+    if (typeof populateCheatSheetPositions === 'function') populateCheatSheetPositions();
     
     document.getElementById('cs-pos-selector').value = heroPos;
     
+    // Sjekker om noen har høynet mer enn Big Blind før deg
     let facingRaise = SIM_STATE.currentBet > SIM_STATE.blinds.bb;
     document.getElementById('cs-mode-selector').value = facingRaise ? "FACING_RAISE" : "RFI";
     
-    if (typeof updateCheatSheetMatrix === 'function') {
-        updateCheatSheetMatrix();
-    }
+    if (typeof updateCheatSheetMatrix === 'function') updateCheatSheetMatrix();
     
     document.getElementById('cheat-sheet-modal').classList.remove('hidden');
 });
