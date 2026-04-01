@@ -1,4 +1,4 @@
-/* Version: #25 - Full og Komplett CSS */
+/* Version: #26 - Full og Komplett CSS (Layout Fiks) */
 
 :root {
     --poker-green: radial-gradient(circle, #2e7d32 0%, #1b5e20 100%);
@@ -22,8 +22,11 @@ body {
     color: white;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     display: flex;
-    justify-content: center;
+    flex-direction: column; /* KRITISK FIKS: Tvinger fanene over innholdet, ikke ved siden av */
+    align-items: center;    /* KRITISK FIKS: Sentrerer innholdet horisontalt */
     min-height: 100vh;
+    margin: 0;
+    padding: 0;
 }
 
 /* === KOMPAKTE FANER PÅ TOPPEN === */
@@ -32,18 +35,19 @@ body {
     max-width: 900px;
     display: flex;
     justify-content: center;
-    gap: 5px;
-    padding: 5px 5px 0 5px;
+    gap: 4px;
+    padding: 10px 10px 0 10px;
+    margin-bottom: 5px;
 }
 
 .tab-btn {
-    padding: 10px 20px;
+    padding: 8px 16px; /* Gjort mindre og strammere */
     background: #222;
     color: #aaa;
     border: none;
-    border-radius: 8px 8px 0 0;
+    border-radius: 6px 6px 0 0;
     cursor: pointer;
-    font-size: 0.95rem;
+    font-size: 0.85rem; /* Mindre skrift */
     font-weight: bold;
     transition: all 0.2s;
     border-bottom: 2px solid transparent;
@@ -87,16 +91,13 @@ header, .sim-header {
 }
 
 header h1, .sim-header h1 {
-    font-size: 1.3rem;
-    color: white;
-    margin-bottom: 5px;
-    display: none; /* Skjult for å spare plass på skjermen */
+    display: none; /* Skjult for å spare dyrebar skjermplass */
 }
 
 .primary-btn {
     background: #1976d2;
     color: white;
-    font-size: 1rem;
+    font-size: 0.95rem;
     font-weight: bold;
     padding: 10px 20px;
     border: none;
@@ -111,13 +112,13 @@ header h1, .sim-header h1 {
 
 .primary-btn:hover {
     background: #1565c0;
-    transform: scale(1.03);
+    transform: scale(1.02);
 }
 
 #game-stats {
     display: flex;
     gap: 15px;
-    font-size: 1rem;
+    font-size: 0.95rem;
     font-weight: bold;
     color: var(--gold);
     background: rgba(255, 193, 7, 0.1);
@@ -177,9 +178,7 @@ select, .cs-select {
     margin-top: 5px;
 }
 
-.secondary-btn:hover {
-    background: #555;
-}
+.secondary-btn:hover { background: #555; }
 
 #sim-info {
     display: flex;
@@ -204,10 +203,10 @@ select, .cs-select {
 /* === POKERBORDET (RESPONSIVT) === */
 #game-area, #sim-game-area {
     position: relative;
-    width: 100%;
-    max-width: 700px;
+    width: 100%; /* Maksimerer skjermbredden */
+    max-width: 800px;
     aspect-ratio: 16 / 10;
-    margin: 15px auto;
+    margin: 10px auto;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -218,7 +217,7 @@ select, .cs-select {
     height: 75%;
     background: var(--poker-green);
     border: 10px solid var(--table-border);
-    border-radius: 50% / 50%; /* Skaper en perfekt oval uansett skjermbredde */
+    border-radius: 50% / 50%; /* Skaper en perfekt oval */
     position: absolute;
     box-shadow: 0 10px 30px rgba(0,0,0,0.7), inset 0 0 30px rgba(0,0,0,0.5);
     display: flex;
@@ -229,8 +228,8 @@ select, .cs-select {
 /* === SETER (JEVNT FORDELT OVAL GEOMETRI) === */
 .seat, .sim-seat {
     position: absolute;
-    width: clamp(45px, 9vw, 65px);
-    height: clamp(45px, 9vw, 65px);
+    width: clamp(45px, 10vw, 65px);
+    height: clamp(45px, 10vw, 65px);
     background: #212121;
     border: 2px solid #555;
     border-radius: 50%;
@@ -238,7 +237,7 @@ select, .cs-select {
     justify-content: center;
     align-items: center;
     flex-direction: column;
-    font-size: clamp(0.55rem, 1.5vw, 0.75rem);
+    font-size: clamp(0.55rem, 1.8vw, 0.75rem);
     font-weight: bold;
     z-index: 10;
     text-align: center;
@@ -258,11 +257,11 @@ select, .cs-select {
 #sim-seat-2, #seat-sb   { bottom: 5%; left: 20%; }
 #sim-seat-3, #seat-btn  { top: 50%; left: -2%; transform: translateY(-50%); } 
 #sim-seat-4, #seat-co   { top: 5%; left: 20%; }
-#sim-seat-5, #seat-hj   { top: -5%; left: 40%; }
-#sim-seat-6, #seat-lj   { top: -5%; right: 40%; }
-#sim-seat-7, #seat-utg2 { top: 5%; right: 20%; }
-#sim-seat-8, #seat-utg1 { top: 50%; right: -2%; transform: translateY(-50%); } 
-#sim-seat-9, #seat-utg  { bottom: 5%; right: 20%; }
+#sim-seat-5, #seat-hj   { top: -5%; left: 50%; transform: translateX(-50%); }
+#sim-seat-6, #seat-lj   { top: 5%; right: 20%; }
+#sim-seat-7, #seat-utg2 { top: 50%; right: -2%; transform: translateY(-50%); } 
+#sim-seat-8, #seat-utg1 { bottom: 5%; right: 20%; }
+#sim-seat-9, #seat-utg  { top: 80%; right: 10%; display: none; /* Justert for 8-max visning da 9-max fort blir trangt, men her skjuler vi setet for ryddighet */ }
 
 /* Trener dynamiske klasser for færre spillere */
 .table-8max #seat-utg1 { display: none; }
@@ -372,7 +371,7 @@ select, .cs-select {
 
 .card.red { color: var(--raise-color); }
 .card.black { color: #111; }
-.sim-seat .card { width: 20px; font-size: 0.7rem; display: inline-flex; margin: 1px; box-shadow: 1px 1px 3px rgba(0,0,0,0.5); }
+.sim-seat .card { width: 22px; font-size: 0.75rem; display: inline-flex; margin: 1px; box-shadow: 1px 1px 3px rgba(0,0,0,0.5); }
 
 /* === KONTROLLER & LOGG === */
 #controls, #sim-controls {
