@@ -1,4 +1,4 @@
-/* Version: #23 - Turneringssimulator Engine med GTO-AI og Håndevaluator */
+/* Version: #24 - Turneringssimulator Engine (Ekte Håndevaluator & Post-Flop AI) */
 
 const SIM_STATE = {
     players: [],
@@ -53,13 +53,13 @@ function initSimulator() {
     const startStack = 800; 
     
     SIM_STATE.players.push({
-        id: 1, name: 'Hero (Deg)', isHero: true, stack: startStack, status: 'active', cards: [], bet: 0
+        id: 1, name: 'Hero (Deg)', isHero: true, stack: startStack, status: 'active', cards: [], bet: 0, hasActed: false
     });
 
     for (let i = 2; i <= tableSize; i++) {
         let profile = AI_PROFILES[Math.floor(Math.random() * AI_PROFILES.length)];
         SIM_STATE.players.push({
-            id: i, name: profile.name, profile: profile.type, isHero: false, stack: startStack, status: 'active', cards: [], bet: 0
+            id: i, name: profile.name, profile: profile.type, isHero: false, stack: startStack, status: 'active', cards: [], bet: 0, hasActed: false
         });
     }
 
@@ -78,7 +78,7 @@ function startNewHand() {
     
     SIM_STATE.players.forEach(p => {
         if (p.stack <= 0) p.status = 'out';
-        else { p.status = 'active'; p.bet = 0; p.cards = []; }
+        else { p.status = 'active'; p.bet = 0; p.cards = []; p.hasActed = false; }
     });
 
     let activeCount = SIM_STATE.players.filter(p => p.status !== 'out').length;
@@ -140,6 +140,7 @@ function postBlinds() {
 
     SIM_STATE.currentBet = SIM_STATE.blinds.bb;
     SIM_STATE.currentTurnIdx = getNextActivePlayer(bbIdx); 
+    // Blinds har "betalt", men har ikke "handlet" aktivt ennå (hasActed = false)
 }
 
 function getNextActivePlayer(currentIdx) {
@@ -159,7 +160,9 @@ function processTurn() {
         return;
     }
 
-    let allMatched = activeInHand.every(p => p.bet === SIM_STATE.currentBet || p.stack === 0);
+    // NY LOGIKK: Bettingrunden er ferdig NÅR alle har betalt like mye, OG alle har hatt muligheten til å handle.
+    let allMatched = activeInHand.every(p => (p.hasActed && p.bet === SIM_STATE.currentBet) || p.stack === 0);
+    
     if (allMatched && activeInHand.length > 0) {
         nextPhase();
         return;
@@ -167,9 +170,9 @@ function processTurn() {
 
     let currentPlayer = SIM_STATE.players[SIM_STATE.currentTurnIdx];
     
-    if (currentPlayer.stack === 0) {
+    if (currentPlayer.stack === 0 || currentPlayer.hasActed && currentPlayer.bet === SIM_STATE.currentBet) {
         SIM_STATE.currentTurnIdx = getNextActivePlayer(SIM_STATE.currentTurnIdx);
-        setTimeout(processTurn, 300);
+        setTimeout(processTurn, 100);
         return;
     }
 
@@ -178,11 +181,10 @@ function processTurn() {
         setupHeroControls(currentPlayer);
     } else {
         document.getElementById('sim-controls').classList.add('hidden');
-        setTimeout(() => executeAITurn(currentPlayer), 1200); 
+        setTimeout(() => executeAITurn(currentPlayer), 1000); 
     }
 }
 
-// Hjelpefunksjon for å finne AI-ens posisjon
 function getAIPosition(playerIdx) {
     const tableSize = SIM_STATE.players.filter(p => p.status !== 'out').length;
     const activePlayers = [];
@@ -192,10 +194,7 @@ function getAIPosition(playerIdx) {
         if(SIM_STATE.players[idx].status !== 'out') activePlayers.push(idx);
     }
     const posNames = getActivePositions(tableSize);
-    // Button er sist i activePlayers (utenom blinds preflop, men vi forenkler mappingen her)
-    // For V1 mapper vi bare røft basert på avstand fra knappen.
     let heroPosIndex = activePlayers.indexOf(playerIdx);
-    // Forskyver slik at SB er index 0, BB er 1, UTG er 2 etc preflop.
     let mappedPos = posNames[heroPosIndex] || "HJ";
     return mappedPos;
 }
@@ -216,9 +215,8 @@ function executeAITurn(aiPlayer) {
     if (isPreflop) {
         let pos = getAIPosition(SIM_STATE.currentTurnIdx);
         let handStr = getHandString(aiPlayer.cards);
-        let facingRaise = callAmount > SIM_STATE.blinds.bb - aiPlayer.bet; // Har noen høynet mer enn BB?
+        let facingRaise = callAmount > SIM_STATE.blinds.bb - aiPlayer.bet; 
         
-        // Hent GTO Range (Antar 40BB for enkelhets skyld i V1 simulator AI)
         let rfiRange = state.expanded["40"].rfi[pos] || new Set();
         let callRange = state.expanded["40"].call[pos] || new Set();
         let threeBetRange = state.expanded["40"].threeBet[pos] || new Set();
@@ -233,11 +231,10 @@ function executeAITurn(aiPlayer) {
             if (rfiRange.has && rfiRange.has(handStr)) { wantsToPlay = true; wantsToRaise = true; }
         }
 
-        // Personlighetsjusteringer
         let roll = Math.random();
-        if (aiPlayer.profile === 'Maniac' && roll < 0.20) { wantsToPlay = true; wantsToRaise = true; } // Bløffer 20%
-        if (aiPlayer.profile === 'Nit' && roll < 0.30) { wantsToPlay = false; } // Folder 30% av bunn-rangen
-        if (aiPlayer.profile === 'Station' && wantsToRaise && roll < 0.50) { wantsToRaise = false; } // Syner i stedet for å høyne
+        if (aiPlayer.profile === 'Maniac' && roll < 0.15) { wantsToPlay = true; wantsToRaise = true; } 
+        if (aiPlayer.profile === 'Nit' && roll < 0.30) { wantsToPlay = false; } 
+        if (aiPlayer.profile === 'Station' && wantsToRaise && roll < 0.50) { wantsToRaise = false; } 
 
         if (!wantsToPlay) {
             action = callAmount === 0 ? 'CHECK' : 'FOLD';
@@ -247,15 +244,23 @@ function executeAITurn(aiPlayer) {
             action = 'CALL';
         }
     } else {
-        // Post-flop (Enkel heuristikk: Kaller hvis check/liten bet, folder mot store bets med mindre de har truffet)
-        if (callAmount === 0) {
-            action = (aiPlayer.profile === 'Maniac' && Math.random() < 0.4) ? 'RAISE' : 'CHECK';
-        } else {
-            let roll = Math.random();
-            if (aiPlayer.profile === 'Station' && roll > 0.2) action = 'CALL';
-            else if (aiPlayer.profile === 'TAG' && roll > 0.6) action = 'CALL';
-            else if (roll > 0.85) action = 'RAISE';
-            else action = 'FOLD';
+        // SMART POST-FLOP AI
+        let handEval = evaluateHand(aiPlayer.cards, SIM_STATE.communityCards);
+        let cat = handEval.category; // 1: High Card, 2: Pair, 3: Two Pair, etc.
+
+        if (callAmount === 0) { // Kan velge å bette eller sjekke
+            if (cat >= 2) { action = Math.random() < 0.6 ? 'RAISE' : 'CHECK'; } 
+            else { action = (aiPlayer.profile === 'Maniac' && Math.random() < 0.4) ? 'RAISE' : 'CHECK'; }
+        } else { // Står overfor et bet
+            if (cat >= 3) { action = Math.random() < 0.4 ? 'RAISE' : 'CALL'; } // To par+
+            else if (cat === 2) { // Ett par
+                if (aiPlayer.profile === 'Nit' && Math.random() > 0.4) action = 'FOLD'; 
+                else action = 'CALL';
+            } else { // High card / Ingenting
+                if (aiPlayer.profile === 'Station' && Math.random() < 0.25) action = 'CALL'; 
+                else if (aiPlayer.profile === 'Maniac' && Math.random() < 0.15) action = 'RAISE'; 
+                else action = 'FOLD';
+            }
         }
     }
 
@@ -308,6 +313,7 @@ function setupHeroControls(hero) {
 
 function applyAction(player, action, raiseTotal = 0) {
     document.getElementById('sim-controls').classList.add('hidden');
+    player.hasActed = true; // Spilleren har nå handlet
     
     if (action === 'FOLD') {
         player.status = 'folded';
@@ -326,6 +332,12 @@ function applyAction(player, action, raiseTotal = 0) {
         player.stack -= actualAdd;
         player.bet += actualAdd;
         SIM_STATE.currentBet = player.bet;
+        
+        // Hvis noen høyner, må alle andre handle på nytt!
+        SIM_STATE.players.forEach(p => { 
+            if (p.id !== player.id && p.status === 'active' && p.stack > 0) p.hasActed = false; 
+        });
+
         if (player.stack === 0) simLog(`${player.name} går ALL-IN med ${player.bet}!`, 'alert');
         else simLog(`${player.name} høyner til ${player.bet}.`, 'alert');
     }
@@ -334,10 +346,14 @@ function applyAction(player, action, raiseTotal = 0) {
     setTimeout(processTurn, 500);
 }
 
-// === 6. FASER OG SHOWDOWN MED HÅNDEVALUATOR ===
+// === 6. FASER OG EKTE HÅNDEVALUATOR ===
 
 function nextPhase() {
-    SIM_STATE.players.forEach(p => { SIM_STATE.pot += p.bet; p.bet = 0; });
+    SIM_STATE.players.forEach(p => { 
+        SIM_STATE.pot += p.bet; 
+        p.bet = 0; 
+        if (p.status === 'active' && p.stack > 0) p.hasActed = false; // Nullstill handling for neste gate
+    });
     SIM_STATE.currentBet = 0;
     
     let activeInHand = SIM_STATE.players.filter(p => p.status === 'active');
@@ -355,15 +371,15 @@ function nextPhase() {
     if (SIM_STATE.phase === 'preflop') {
         SIM_STATE.phase = 'flop';
         SIM_STATE.communityCards.push(SIM_STATE.deck.pop(), SIM_STATE.deck.pop(), SIM_STATE.deck.pop());
-        simLog("--- FLOP ---");
+        simLog("--- FLOP ---", "alert");
     } else if (SIM_STATE.phase === 'flop') {
         SIM_STATE.phase = 'turn';
         SIM_STATE.communityCards.push(SIM_STATE.deck.pop());
-        simLog("--- TURN ---");
+        simLog("--- TURN ---", "alert");
     } else if (SIM_STATE.phase === 'turn') {
         SIM_STATE.phase = 'river';
         SIM_STATE.communityCards.push(SIM_STATE.deck.pop());
-        simLog("--- RIVER ---");
+        simLog("--- RIVER ---", "alert");
     } else if (SIM_STATE.phase === 'river') {
         evaluateShowdown();
         return;
@@ -374,64 +390,64 @@ function nextPhase() {
     setTimeout(processTurn, 1000);
 }
 
-// DEN EKTE HÅNDEVALUATOREN (Texas Hold'em 7-card evaluator)
+// 7-KORTS TEXAS HOLD'EM EVALUATOR
 function evaluateHand(holeCards, communityCards) {
-    let allCards = [...holeCards, ...communityCards];
-    // Map kort til numeriske verdier (A=14, K=13 osv.)
-    let cardValues = allCards.map(c => {
-        let v = VALUES.indexOf(c.v);
-        return { val: (v === 0 ? 14 : 14 - v), suit: c.s.name };
-    }).sort((a, b) => b.val - a.val); // Sorter synkende
+    let cards = [...holeCards, ...communityCards].map(c => {
+        let val = VALUES.indexOf(c.v);
+        return { val: (val === 0 ? 14 : 14 - val), suit: c.s.name };
+    }).sort((a, b) => b.val - a.val);
+
+    let counts = {};
+    cards.forEach(c => { counts[c.val] = (counts[c.val] || 0) + 1; });
+    let groups = Object.entries(counts).map(([v, c]) => ({val: parseInt(v), count: c})).sort((a,b) => b.count - a.count || b.val - a.val);
 
     let suits = {};
-    let counts = {};
-    cardValues.forEach(c => {
-        suits[c.suit] = (suits[c.suit] || 0) + 1;
-        counts[c.val] = (counts[c.val] || 0) + 1;
-    });
+    cards.forEach(c => { suits[c.suit] = (suits[c.suit] || []).concat(c); });
+    let flushCards = Object.values(suits).find(list => list.length >= 5);
+    let isFlush = !!flushCards;
 
-    let isFlush = false;
-    let flushSuit = null;
-    for (let s in suits) { if (suits[s] >= 5) { isFlush = true; flushSuit = s; break; } }
-
-    // Enkel frequency map
-    let groups = Object.entries(counts).map(([v, c]) => ({val: parseInt(v), count: c})).sort((a,b) => b.count - a.count || b.val - a.val);
-    
-    // Sjekk Straight
-    let uniqueVals = [...new Set(cardValues.map(c => c.val))];
-    let straightHigh = 0;
-    if (uniqueVals.includes(14)) uniqueVals.push(1); // Ess kan være lav
-    uniqueVals.sort((a,b) => b-a);
-    for (let i = 0; i <= uniqueVals.length - 5; i++) {
-        if (uniqueVals[i] - uniqueVals[i+4] === 4) { straightHigh = uniqueVals[i]; break; }
+    function getStraightHigh(cardList) {
+        let vals = [...new Set(cardList.map(c => c.val))];
+        if (vals.includes(14)) vals.push(1); // Ess kan brukes som lav
+        for (let i = 0; i <= vals.length - 5; i++) {
+            if (vals[i] - vals[i+4] === 4) return vals[i];
+        }
+        return 0;
     }
 
-    let score = 0;
+    let straightHigh = getStraightHigh(cards);
+    let straightFlushHigh = isFlush ? getStraightHigh(flushCards) : 0;
+
+    let cat = 1, c1=0, c2=0, c3=0, c4=0, c5=0;
     let handName = "";
 
-    // Grov scoring: Kategori * 1000000 + Top Kicker verdier
-    if (straightHigh && isFlush) { // Forenklet Straight Flush sjekk
-        score = 8000000 + straightHigh; handName = "Straight Flush";
+    if (straightFlushHigh) {
+        cat = 9; c1 = straightFlushHigh; handName = straightFlushHigh === 14 ? "Royal Flush" : "Straight Flush";
     } else if (groups[0].count === 4) {
-        score = 7000000 + (groups[0].val * 100) + groups[1].val; handName = "Fire Like (Quads)";
-    } else if (groups[0].count === 3 && groups[1]?.count >= 2) {
-        score = 6000000 + (groups[0].val * 100) + groups[1].val; handName = "Fullt Hus";
+        cat = 8; c1 = groups[0].val; c2 = cards.find(c => c.val !== c1).val; handName = "Fire Like (Quads)";
+    } else if (groups[0].count === 3 && groups[1] && groups[1].count >= 2) {
+        cat = 7; c1 = groups[0].val; c2 = groups[1].val; handName = "Fullt Hus";
     } else if (isFlush) {
-        let fCards = cardValues.filter(c => c.suit === flushSuit).slice(0,5);
-        score = 5000000 + fCards[0].val; handName = "Flush";
+        cat = 6; c1 = flushCards[0].val; c2 = flushCards[1].val; c3 = flushCards[2].val; c4 = flushCards[3].val; c5 = flushCards[4].val; handName = "Flush";
     } else if (straightHigh) {
-        score = 4000000 + straightHigh; handName = "Straight";
+        cat = 5; c1 = straightHigh; handName = "Straight";
     } else if (groups[0].count === 3) {
-        score = 3000000 + (groups[0].val * 10000); handName = "Tre Like (Trips)";
-    } else if (groups[0].count === 2 && groups[1]?.count === 2) {
-        score = 2000000 + (groups[0].val * 10000) + (groups[1].val * 100); handName = "To Par";
+        cat = 4; c1 = groups[0].val; 
+        let kickers = cards.filter(c => c.val !== c1).slice(0, 2);
+        c2 = kickers[0].val; c3 = kickers[1].val; handName = "Tre Like (Trips)";
+    } else if (groups[0].count === 2 && groups[1] && groups[1].count === 2) {
+        cat = 3; c1 = groups[0].val; c2 = groups[1].val; 
+        c3 = cards.find(c => c.val !== c1 && c.val !== c2).val; handName = "To Par";
     } else if (groups[0].count === 2) {
-        score = 1000000 + (groups[0].val * 10000); handName = "Ett Par";
+        cat = 2; c1 = groups[0].val;
+        let kickers = cards.filter(c => c.val !== c1).slice(0, 3);
+        c2 = kickers[0].val; c3 = kickers[1].val; c4 = kickers[2].val; handName = "Ett Par";
     } else {
-        score = groups[0].val * 10000; handName = "Høyt Kort";
+        cat = 1; c1 = cards[0].val; c2 = cards[1].val; c3 = cards[2].val; c4 = cards[3].val; c5 = cards[4].val; handName = "Høyt Kort";
     }
 
-    return { score, handName };
+    let score = cat * 10000000000 + c1 * 100000000 + c2 * 1000000 + c3 * 10000 + c4 * 100 + c5;
+    return { score, handName, category: cat };
 }
 
 function evaluateShowdown() {
@@ -447,7 +463,7 @@ function evaluateShowdown() {
         let evalRes = evaluateHand(p.cards, SIM_STATE.communityCards);
         p.handScore = evalRes.score;
         p.handName = evalRes.handName;
-        simLog(`${p.name} viser ${formatCard(p.cards[0])} ${formatCard(p.cards[1])} (${p.handName})`);
+        simLog(`${p.name} viser ${formatCard(p.cards[0])} ${formatCard(p.cards[1])} => <strong>${p.handName}</strong>`);
         
         if (p.handScore > bestScore) {
             bestScore = p.handScore;
@@ -458,7 +474,7 @@ function evaluateShowdown() {
     });
 
     if (winners.length === 1) {
-        simLog(`🏆 ${winners[0].name} vinner med ${winners[0].handName}!`, 'hero');
+        simLog(`🏆 ${winners[0].name} vinner potten (${SIM_STATE.pot})!`, 'hero');
         awardPot(winners[0]);
     } else {
         simLog(`🤝 Split pot mellom ${winners.map(w=>w.name).join(' og ')}!`, 'alert');
