@@ -16,68 +16,50 @@
     <div id="trainer-tab" class="tab-content">
         <div id="app-container">
             <header>
-                <h1>Preflop Pro (Turneringsutgave)</h1>
                 <button id="btn-open-cheat-sheet" class="primary-btn">📖 ÅPNE LIVE OPPSLAGSVERK</button>
-                
                 <div id="game-stats">
                     <div class="stat-box">Poeng: <span id="score-display">0</span></div>
                     <div class="stat-box">Streak: <span id="streak-display">0</span> 🔥</div>
                 </div>
-
                 <div id="settings-panel">
                     <div class="setting-group">
-                        <label for="stack-size-selector">Stack:</label>
+                        <label>Stack:</label>
                         <select id="stack-size-selector">
                             <option value="100">Deep Stack (100BB+)</option>
                             <option value="40" selected>Normal (40BB)</option>
-                            <option value="15">Short Stack (15BB - Push/Fold)</option>
+                            <option value="15">Short Stack (15BB)</option>
                         </select>
                     </div>
                     <div class="setting-group">
-                        <label for="table-size-selector">Bordstørrelse:</label>
+                        <label>Bord:</label>
                         <select id="table-size-selector">
-                            <option value="9">9-Max (Full Ring)</option>
+                            <option value="9">9-Max</option>
                             <option value="8">8-Max</option>
                             <option value="6">6-Max</option>
                             <option value="3">3-Max</option>
-                            <option value="2">Heads-Up (2-Max)</option>
+                            <option value="2">Heads-Up</option>
                         </select>
                     </div>
                     <div class="setting-group">
-                        <label for="mode-selector">Modus:</label>
+                        <label>Modus:</label>
                         <select id="mode-selector">
                             <option value="RFI">Åpen Pott (RFI)</option>
                             <option value="FACING_RAISE">Møter en Raise</option>
                         </select>
                     </div>
-                    
-                    <div class="setting-group checkbox-group" style="flex-direction: column; align-items: flex-start; gap: 8px;">
-                        <label for="auto-range-toggle" class="toggle-label">
-                            <input type="checkbox" id="auto-range-toggle" checked>
-                            Vis range automatisk ved feil
-                        </label>
-                        <label for="focus-mode-toggle" class="toggle-label">
-                            <input type="checkbox" id="focus-mode-toggle">
-                            Fokusmodus (Fjern åpenbart søppel)
-                        </label>
+                    <div class="setting-group checkbox-group" style="flex-direction: column; align-items: flex-start; gap: 4px;">
+                        <label class="toggle-label"><input type="checkbox" id="auto-range-toggle" checked> Vis range ved feil</label>
+                        <label class="toggle-label"><input type="checkbox" id="focus-mode-toggle"> Fokusmodus (Ingen søppel)</label>
                     </div>
                 </div>
-
                 <button id="btn-show-range" class="secondary-btn">Vis Range for <span id="range-pos-label">UTG</span></button>
             </header>
 
             <main id="game-area">
                 <div id="poker-table"></div>
-                <div id="seat-utg" class="seat">UTG</div>
-                <div id="seat-utg1" class="seat">UTG1</div>
-                <div id="seat-utg2" class="seat">UTG2</div>
-                <div id="seat-lj" class="seat">LJ</div>
-                <div id="seat-hj" class="seat">HJ</div>
-                <div id="seat-co" class="seat">CO</div>
-                <div id="seat-btn" class="seat">BTN</div>
-                <div id="seat-sb" class="seat">SB</div>
-                <div id="seat-bb" class="seat">BB</div>
-
+                <div id="seat-utg" class="seat">UTG</div><div id="seat-utg1" class="seat">UTG1</div><div id="seat-utg2" class="seat">UTG2</div>
+                <div id="seat-lj" class="seat">LJ</div><div id="seat-hj" class="seat">HJ</div><div id="seat-co" class="seat">CO</div>
+                <div id="seat-btn" class="seat">BTN</div><div id="seat-sb" class="seat">SB</div><div id="seat-bb" class="seat">BB</div>
                 <div id="center-info">
                     <div id="scenario-display">Åpen Pott (Ingen har høynet)</div>
                     <div id="current-pos-display">UTG</div>
@@ -105,19 +87,19 @@
     <div id="simulator-tab" class="tab-content hidden">
         <div id="sim-container">
             <header class="sim-header">
-                <h1>SNG AI-Simulator</h1>
                 <div id="sim-settings">
-                    <label for="sim-table-size">Format:</label>
+                    <label>Format:</label>
                     <select id="sim-table-size">
                         <option value="9">9-Max SNG</option>
                         <option value="6">6-Max SNG</option>
                     </select>
-                    <button id="btn-start-sim" class="primary-btn" style="margin-top:0;">START TURNERING</button>
+                    <button id="btn-start-sim" class="primary-btn" style="margin-top:0; padding: 8px 15px;">START TURNERING</button>
                 </div>
                 <div id="sim-info" class="hidden">
                     <div class="sim-stat">Nivå: <span id="sim-level">1</span></div>
                     <div class="sim-stat">Blinds: <span id="sim-blinds">10/20</span></div>
                     <div class="sim-stat">Spillere: <span id="sim-players-left">9</span></div>
+                    <button id="sim-btn-show-ranges" class="secondary-btn" style="margin-left: 10px; font-size: 0.8rem;">📊 Mine Ranges</button>
                 </div>
             </header>
 
@@ -128,7 +110,6 @@
                         <div id="sim-community-cards"></div>
                     </div>
                 </div>
-                
                 <div id="sim-seat-1" class="sim-seat hero-seat"><div class="sim-seat-content"></div></div>
                 <div id="sim-seat-2" class="sim-seat"><div class="sim-seat-content"></div></div>
                 <div id="sim-seat-3" class="sim-seat"><div class="sim-seat-content"></div></div>
@@ -152,9 +133,7 @@
 
             <section id="sim-log-section">
                 <h3>Live Handlingslogg</h3>
-                <div id="sim-log-content">
-                    <p>Velg format og trykk "Start Turnering" for å spille mot AI-en.</p>
-                </div>
+                <div id="sim-log-content"><p>Velg format og trykk "Start Turnering".</p></div>
             </section>
         </div>
     </div>
@@ -167,8 +146,8 @@
             </div>
             <div id="matrix-container" class="matrix-grid"></div>
             <div class="legend" id="modal-legend">
-                <div class="legend-item"><span class="color-box raise-color"></span> Raise / 3-Bet / Push</div>
-                <div class="legend-item"><span class="color-box call-color"></span> Call (Flat)</div>
+                <div class="legend-item"><span class="color-box raise-color"></span> Raise/3-Bet</div>
+                <div class="legend-item"><span class="color-box call-color"></span> Call</div>
                 <div class="legend-item"><span class="color-box fold-color"></span> Fold</div>
             </div>
         </div>
@@ -182,34 +161,28 @@
             </div>
             <div class="cheat-sheet-controls">
                 <select id="cs-stack-selector" class="cs-select">
-                    <option value="100">100BB (Deep)</option>
-                    <option value="40" selected>40BB (Normal)</option>
-                    <option value="15">15BB (Push/Fold)</option>
+                    <option value="100">100BB</option><option value="40" selected>40BB</option><option value="15">15BB</option>
                 </select>
                 <select id="cs-table-selector" class="cs-select">
-                    <option value="9">9-Max</option>
-                    <option value="8">8-Max</option>
-                    <option value="6">6-Max</option>
-                    <option value="3">3-Max</option>
-                    <option value="2">Heads-Up</option>
+                    <option value="9">9-Max</option><option value="8">8-Max</option><option value="6">6-Max</option><option value="3">3-Max</option><option value="2">Heads-Up</option>
                 </select>
                 <select id="cs-pos-selector" class="cs-select"></select>
                 <select id="cs-mode-selector" class="cs-select">
-                    <option value="RFI">Åpen Pott (RFI)</option>
-                    <option value="FACING_RAISE">Møter en Raise</option>
+                    <option value="RFI">Åpen Pott (RFI)</option><option value="FACING_RAISE">Møter en Raise</option>
                 </select>
             </div>
             <div id="cs-matrix-container" class="matrix-grid"></div>
             <div class="legend">
-                <div class="legend-item"><span class="color-box raise-color"></span> Spilles Aggressivt</div>
-                <div class="legend-item"><span class="color-box call-color"></span> Spilles Passivt (Call)</div>
+                <div class="legend-item"><span class="color-box raise-color"></span> Aggressivt</div>
+                <div class="legend-item"><span class="color-box call-color"></span> Passivt (Call)</div>
                 <div class="legend-item"><span class="color-box fold-color"></span> Fold</div>
             </div>
         </div>
     </div>
 
-    <script src="script.js"></script> <script src="simulator.js"></script> <script>
-        // Logikk for å skifte mellom fanene
+    <script src="script.js"></script> 
+    <script src="simulator.js"></script>
+    <script>
         document.getElementById('tab-btn-trainer').addEventListener('click', () => {
             document.getElementById('tab-btn-trainer').classList.add('active');
             document.getElementById('tab-btn-simulator').classList.remove('active');
